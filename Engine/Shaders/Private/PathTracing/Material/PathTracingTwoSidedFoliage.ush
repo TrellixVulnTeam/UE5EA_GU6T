@@ -1,0 +1,87 @@
+// Copyright Epic Games, Inc. All Rights Reserved.
+
+/*=============================================================================================
+	PathTracingTwoSidedFoliage.usf: Path tracing BRDF model for two-sided foliage material
+===============================================================================================*/
+
+#pragma once
+
+#include "PathTracingDefaultLit.ush"
+
+float CalcTransmissionSelectionPdf(
+	float3 IncomingDirection,
+	FMaterialClosestHitPayload Payload
+)
+{
+	// pick back lobe proportionally to its contribution, and leave the rest to the front side
+	// TODO: estimate this better based on lobe colors ...
+	float3 Subsurf = GetSubsurfaceColor(Payload);
+	return max(Subsurf.x, max(Subsurf.y, Subsurf.z));
+}
+
+void TwoSidedFoliage_SampleMaterial(
+	float3 RayDirection,
+	FMaterialClosestHitPayload Payload,
+	float4 RandSample,
+	out float3 OutDirection,
+	out float3 OutWeight,
+	out float OutPdf,
+	out float OutPositionBiasSign
+)
+{
+	float TransmissionSelectionPdf = CalcTransmissionSelectionPdf(RayDirection, Payload);
+	if (RandSample.x < TransmissionSelectionPdf)
+	{
+		RandSample.x /= TransmissionSelectionPdf;
+
+		float3 N = GetWorldNormal(Payload);
+		float3 SubsurfaceColor = GetSubsurfaceColor(Payload);
+
+		float4 SampledValue = CosineSampleHemisphere(RandSample.yz);
+		OutDirection = TangentToWorld(SampledValue.xyz, -N);
+
+		OutWeight = SubsurfaceColor / TransmissionSelectionPdf;
+		OutPdf = TransmissionSelectionPdf * SampledValue.w;
+		OutPositionBiasSign = -1.0;
+	}
+	else
+	{
+		RandSample.x -= TransmissionSelectionPdf;
+		RandSample.x /= (1.0 - TransmissionSelectionPdf);
+
+		DefaultLit_SampleMaterial(RayDirection, Payload, RandSample, OutDirection, OutWeight, OutPdf);
+		OutWeight /= 1.0 - TransmissionSelectionPdf;
+		OutPdf *= 1.0 - TransmissionSelectionPdf;
+		OutPositionBiasSign = 1.0;
+	}
+}
+
+void TwoSidedFoliage_EvalMaterial(
+	float3 IncomingDirection,
+	float3 OutgoingDirection,
+	FMaterialClosestHitPayload Payload,
+	out float3 OutWeight,
+	out float OutPdf
+)
+{
+	float TransmissionSelectionPdf = CalcTransmissionSelectionPdf(IncomingDirection, Payload);
+
+	float3 N = GetWorldNormal(Payload);
+	float NoL = dot(N, OutgoingDirection);
+	if (NoL < 0.0)
+	{
+		// Diffuse transmission (the implementation in TwoSidedBxDF does not appear to be a real BxDF)
+
+		float3 SubsurfaceColor = GetSubsurfaceColor(Payload);
+
+		float LambertPdf = -NoL / PI;
+		OutWeight = TransmissionSelectionPdf > 0 ? SubsurfaceColor / TransmissionSelectionPdf : 0;
+		OutPdf = TransmissionSelectionPdf * LambertPdf;
+	}
+	else
+	{
+		DefaultLit_EvalMaterial(IncomingDirection, OutgoingDirection, Payload, OutWeight, OutPdf);
+		OutWeight /= 1.0 - TransmissionSelectionPdf;
+		OutPdf *= 1.0 - TransmissionSelectionPdf;
+	}
+}

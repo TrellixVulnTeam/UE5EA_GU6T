@@ -1,0 +1,223 @@
+// Copyright Epic Games, Inc. All Rights Reserved.
+
+/*=============================================================================================
+LightSampling.usf: Light sampling for next-event estimation 
+===============================================================================================*/
+
+#pragma once
+
+#ifndef ENABLE_TRANSMISSION
+	#define ENABLE_TRANSMISSION 1
+#endif
+
+//#define UNIFORM_LIGHT_SELECTION
+
+#include "PathTracingLightCommon.ush"
+#include "PathTracingDirectionalLight.ush"
+#include "PathTracingPointLight.ush"
+#include "PathTracingRectLight.ush"
+#include "PathTracingSkyLight.ush"
+#include "PathTracingSpotLight.ush"
+
+// Returns float4 packed with Radiance and Pdf
+float4 TraceLight(RayDesc Ray, int LightId, inout float HitT)
+{
+	switch (SceneLights[LightId].Flags & PATHTRACER_FLAG_TYPE_MASK)
+	{
+		case PATHTRACING_LIGHT_SKY:			return SkyLight_TraceLight(Ray, LightId, HitT);
+		case PATHTRACING_LIGHT_POINT:		return PointLight_TraceLight(Ray, LightId, HitT);
+		case PATHTRACING_LIGHT_DIRECTIONAL: return DirectionalLight_TraceLight(Ray, LightId, HitT);
+		case PATHTRACING_LIGHT_RECT:		return RectLight_TraceLight(Ray, LightId, HitT);
+		case PATHTRACING_LIGHT_SPOT:		return SpotLight_TraceLight(Ray, LightId, HitT);
+		default: return 0; // unknown light type?
+	}
+}
+
+// Choose a point on a light as seen from the given shading point
+void SampleLight(
+	int LightId,
+	float4 RandSample,
+	float3 WorldPos,
+	float3 WorldNormal,
+	out float3 OutDirection,
+	out float  OutDistance,
+	out float3 OutRadianceOverPdf,
+	out float OutPdf)
+{
+	switch (SceneLights[LightId].Flags & PATHTRACER_FLAG_TYPE_MASK)
+	{
+		case PATHTRACING_LIGHT_SKY:
+			SkyLight_SampleLight(LightId, RandSample, WorldPos, WorldNormal, OutDirection, OutDistance, OutRadianceOverPdf, OutPdf);
+			return;
+		case PATHTRACING_LIGHT_POINT:
+			PointLight_SampleLight(LightId, RandSample, WorldPos, WorldNormal, OutDirection, OutDistance, OutRadianceOverPdf, OutPdf);
+			return;
+		case PATHTRACING_LIGHT_DIRECTIONAL:
+			DirectionalLight_SampleLight(LightId, RandSample, WorldPos, WorldNormal, OutDirection, OutDistance, OutRadianceOverPdf, OutPdf);
+			return;
+		case PATHTRACING_LIGHT_RECT:
+			RectLight_SampleLight(LightId, RandSample, WorldPos, WorldNormal, OutDirection, OutDistance, OutRadianceOverPdf, OutPdf);
+			return;
+		case PATHTRACING_LIGHT_SPOT:
+			SpotLight_SampleLight(LightId, RandSample, WorldPos, WorldNormal, OutDirection, OutDistance, OutRadianceOverPdf, OutPdf);
+			return;
+		default:
+			// unknown light type?
+			OutDirection = 0;
+			OutDistance = 0;
+			OutRadianceOverPdf = 0;
+			OutPdf = 0;
+			return;
+	}
+}
+
+void EstimateLight(
+	int LightId,
+	float3 WorldPos,
+	float3 WorldNormal,
+	uint PrimitiveLightingChannelMask,
+	bool IsTransmissiveMaterial,
+	inout float OutIrradiance
+)
+{
+	OutIrradiance = 0.0f;
+	if ((GetLightingChannelMask(LightId) & PrimitiveLightingChannelMask) == 0) return;
+
+	switch (SceneLights[LightId].Flags & PATHTRACER_FLAG_TYPE_MASK)
+	{
+		case PATHTRACING_LIGHT_SKY:
+			SkyLight_EstimateLight(LightId, WorldPos, WorldNormal, IsTransmissiveMaterial, OutIrradiance);
+			return;
+		case PATHTRACING_LIGHT_POINT:
+			PointLight_EstimateLight(LightId, WorldPos, WorldNormal, IsTransmissiveMaterial, OutIrradiance);
+			return;
+		case PATHTRACING_LIGHT_DIRECTIONAL:
+			DirectionalLight_EstimateLight(LightId, WorldPos, WorldNormal, IsTransmissiveMaterial, OutIrradiance);
+			return;
+		case PATHTRACING_LIGHT_RECT:
+			RectLight_EstimateLight(LightId, WorldPos, WorldNormal, IsTransmissiveMaterial, OutIrradiance);
+			return;
+		case PATHTRACING_LIGHT_SPOT:
+			SpotLight_EstimateLight(LightId, WorldPos, WorldNormal, IsTransmissiveMaterial, OutIrradiance);
+			return;
+		default:
+			return;
+	}
+}
+
+// #dxr_todo: passing LightPickingCdf as anything but inout causes performance to drop significantly -- why ?
+void InitLightPickingCdf(inout float LightPickingCdf[RAY_TRACING_LIGHT_COUNT_MAXIMUM])
+{
+	for (uint LightIndex = 0; LightIndex < SceneLightCount; ++LightIndex)
+	{
+		LightPickingCdf[LightIndex] = float(LightIndex + 1) / float(SceneLightCount);
+	}
+}
+
+// #dxr_todo: passing LightPickingCdf as anything but inout causes performance to drop significantly -- why ?
+bool InitLightPickingCdf(
+	float3 WorldPos,
+	float3 WorldNormal,
+	uint PrimitiveLightingChannelMask,
+	bool IsTransmissiveMaterial,
+	inout float LightPickingCdf[RAY_TRACING_LIGHT_COUNT_MAXIMUM])
+{
+	// This code assumes SceneLightCount > 0
+#ifdef UNIFORM_LIGHT_SELECTION
+	InitLightPickingCdf(LightPickingCdf);
+#else
+	// Build irradiance estimate prefix sum
+	float LastCdf = 0;
+	{
+		for (uint LightIndex = 0; LightIndex < SceneLightCount; ++LightIndex)
+		{
+			EstimateLight(LightIndex, WorldPos, WorldNormal, PrimitiveLightingChannelMask, IsTransmissiveMaterial, LightPickingCdf[LightIndex]);
+			LightPickingCdf[LightIndex] += LastCdf;
+			LastCdf = LightPickingCdf[LightIndex];
+		}
+	}
+
+	if (LastCdf == 0)
+	{
+		// all the lights are invisible
+		return false;
+	}
+	{
+		// CDF normalization
+		for (uint LightIndex = 0; LightIndex < SceneLightCount; ++LightIndex)
+		{
+			LightPickingCdf[LightIndex] /= LastCdf;
+		}
+		LightPickingCdf[SceneLightCount - 1] = 1.0;
+	}
+#endif
+	return true;
+}
+
+// #dxr_todo: passing LightPickingCdf as anything but inout causes performance to drop significantly -- why ?
+void SelectLight(float RandSample, inout float LightPickingCdf[RAY_TRACING_LIGHT_COUNT_MAXIMUM], out uint LightId, out float LightPickPdf)
+{
+	// This code assumes SceneLightCount > 0
+
+	// Draw random variable
+	// #dxr_todo: binary search
+	float PreviousCdfValue = 0;
+	for (LightId = 0; LightId < SceneLightCount - 1; ++LightId)
+	{
+		if (RandSample < LightPickingCdf[LightId])
+		{
+			break;
+		}
+		PreviousCdfValue = LightPickingCdf[LightId];
+	}
+
+	LightPickPdf = LightPickingCdf[LightId] - PreviousCdfValue;
+}
+
+bool SampleLight(
+	float4 RandSample,
+	float3 WorldPos,
+	float3 WorldNormal,
+	uint PrimitiveLightingChannelMask,
+	bool IsTransmissiveMaterial,
+	out int OutLightId,
+	out float3 OutDirection,
+	out float  OutDistance,
+	out float3 OutRadianceOverPdf,
+	out float OutPdf)
+{
+	// set default values in case sampling fails
+	OutLightId = -1;
+	OutDirection = 0;
+	OutDistance = 0;
+	OutRadianceOverPdf = 0;
+	OutPdf = 0;
+
+	if (SceneLightCount == 0)
+	{
+		// no lights in the scene
+		return false;
+	}
+
+	float LightPickingCdf[RAY_TRACING_LIGHT_COUNT_MAXIMUM];
+
+	if (!InitLightPickingCdf(WorldPos, WorldNormal, PrimitiveLightingChannelMask, IsTransmissiveMaterial, LightPickingCdf))
+	{
+		// light picking cdf is all 0
+		return false;
+	}
+
+	float LightPickPdf = 0;
+
+	SelectLight(RandSample.x, LightPickingCdf, OutLightId, LightPickPdf);
+
+	SampleLight(OutLightId, RandSample, WorldPos, WorldNormal,
+		OutDirection,
+		OutDistance,
+		OutRadianceOverPdf,
+		OutPdf);
+	OutRadianceOverPdf /= LightPickPdf;
+	OutPdf *= LightPickPdf;
+
+	return true;
+}

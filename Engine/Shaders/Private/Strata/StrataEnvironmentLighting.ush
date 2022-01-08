@@ -1,0 +1,111 @@
+// Copyright Epic Games, Inc. All Rights Reserved.
+
+#pragma once
+
+#ifndef STRATA_FASTPATH 
+#define STRATA_FASTPATH 0
+#endif
+
+// Env. lighting evaluation for strata material.
+// Unpack BSDF on-the-fly
+float4 StrataEnvironmentLighting(
+	float2 BufferUV,
+	float SceneDepth,
+	float GBufferAO,
+	float3 WorldPosition,
+	float3 CameraToPixel,
+	float3 V,
+	float AmbientOcclusion,
+	float TopLayerSpecularContributionFactor,
+	ByteAddressBuffer StrataDataBuffer,
+	FStrataAddressing StrataAddressing,
+	inout float SSRReductionFactor)
+{
+	FLightAccumulator Out = (FLightAccumulator)0;
+
+	SSRReductionFactor = 1.0f;
+
+	float3 CommonFactor = 1;
+#if USE_PREEXPOSURE
+	CommonFactor *= View.PreExposure;
+#endif
+
+	// Sample DFAO only once
+	FUpsampleDFAOOutput UpsampleDFAOOutput = UpsampleDFAO(BufferUV, SceneDepth);
+
+#if STRATA_FASTPATH
+	uint BSDFIndex = 0;
+	FStrataPixelHeader StrataPixelHeader = UnpackFastPathStrataHeaderIn(StrataDataBuffer, StrataAddressing);
+#else
+	FStrataPixelHeader StrataPixelHeader = UnpackStrataHeaderIn(StrataDataBuffer, StrataAddressing);
+	for (uint BSDFIndex = 0; BSDFIndex < StrataPixelHeader.BSDFCount; ++BSDFIndex)
+#endif
+	{
+		FStrataBSDF BSDF = UnpackStrataBSDFIn(StrataDataBuffer, StrataAddressing);
+#if STRATA_FASTPATH
+		SetStrataFastPathState(BSDF);
+#endif
+		const float3 BSDFThroughput = BSDF.Weight;
+
+		// Create the BSDF context
+		const float3 UnusedL = float3(0.0f, 0.0f, 1.0f);
+		FStrataBSDFContext StrataBSDFContext = StrataCreateBSDFContext(StrataPixelHeader, BSDF, V, UnusedL);
+
+		// Evaluate environment lighting
+		const bool bEnableSpecular = ReflectionStruct.SkyLightParameters.y > 0.0f;
+		FStrataEnvLightResult StrataEnvLight = StrataEvaluateForEnvLight(StrataBSDFContext, bEnableSpecular);
+
+		// Diffuse component
+		float3 DiffuseSkyLighting = 0;
+		if (any(StrataEnvLight.DiffuseColor > 0.0f))
+		{
+			// Apply bent normal if needed
+			#if APPLY_SKY_SHADOWING
+			{
+				StrataEnvLight.DiffuseNormal = ApplyDFAO(UpsampleDFAOOutput, StrataEnvLight.DiffuseNormal); // Bent normal
+			}
+			#endif
+
+			// Compute the common sky visibility factors
+			FSkyLightVisibilityData SkyVisData = GetSkyLightVisibilityData(StrataBSDFContext.N, StrataBSDFContext.N, GBufferAO, AmbientOcclusion, StrataEnvLight.DiffuseNormal);
+
+			// Finally sample the sky diffuse contribution (spherical harmonic, Lambert BRDF)
+			float3 DiffuseLookup = GetSkySHDiffuse(StrataEnvLight.DiffuseNormal) * View.SkyLightColor.rgb;			// STRATA_TODO compute SH coefficients for ON or Chan
+			// And accumulate
+			DiffuseSkyLighting = BSDFThroughput * (SkyVisData.SkyDiffuseLookUpMul * DiffuseLookup + SkyVisData.SkyDiffuseLookUpAdd) * StrataEnvLight.DiffuseColor;
+		}
+
+		// Specular component
+		const bool bIsTopLayer = BSDF_GETISTOPLAYER(BSDF);
+		float3 SpecularSkyLighting = 0;
+		if (any(StrataEnvLight.SpecularWeight > 0.0f))
+		{
+			float SkyAverageBrightness = 1.0f;
+			const float3 SpecularLuminance = GetSkyLightReflection(StrataEnvLight.SpecularDirection, StrataEnvLight.SpecularSafeRoughness, SkyAverageBrightness);
+
+			SpecularSkyLighting += BSDFThroughput * SpecularLuminance * StrataEnvLight.SpecularWeight * View.SkyLightColor.rgb * AmbientOcclusion * 
+				(bIsTopLayer ? TopLayerSpecularContributionFactor : 1.0f);
+		}
+		if (BSDF_GETHASHAZINESS(BSDF))
+		{
+			float SkyAverageBrightness = 1.0f;
+			const float3 SpecularLuminance = GetSkyLightReflection(StrataEnvLight.SpecularDirection, StrataEnvLight.SpecularHazeSafeRoughness, SkyAverageBrightness);
+
+			SpecularSkyLighting += BSDFThroughput * SpecularLuminance * StrataEnvLight.SpecularHazeWeight * View.SkyLightColor.rgb * AmbientOcclusion;
+
+			// SSR is traced for the sharpest lob. The smoothest one does not rely on SSR so we need to lower energy coming from SSR according to the lobe blend weight.
+			// And we also try to make the transition smooth using Haziness
+			SSRReductionFactor -= bIsTopLayer ? dot(BSDFThroughput, float3(1.0f / 3.0f, 1.0f / 3.0f, 1.0f / 3.0f)) * StrataEnvLight.SSRReduction : 0.0f;
+		}
+
+		const bool bNeedsSeparateSubsurfaceLightAccumulation = StrataEnvLight.bSubsurface;
+		LightAccumulator_AddSplit(Out, DiffuseSkyLighting, SpecularSkyLighting, DiffuseSkyLighting, CommonFactor, bNeedsSeparateSubsurfaceLightAccumulation);
+
+		// STRATA_TODO: Missing probe reflection here
+	}
+
+	SSRReductionFactor = saturate(SSRReductionFactor);
+
+	return LightAccumulator_GetResult(Out);
+}
+
