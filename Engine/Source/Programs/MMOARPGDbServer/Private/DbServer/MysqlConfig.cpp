@@ -70,7 +70,7 @@ void FSimpleMysqlConfig::Init(const FString& InPath /*= FPaths::ProjectDir() / T
 		Content.Add(FString::Printf(TEXT("Host=%s"),   *m_Config.Host));
 		Content.Add(FString::Printf(TEXT("Passwd=%s"), *m_Config.Passwd));
 		Content.Add(FString::Printf(TEXT("DB=%s"),     *m_Config.DB));
-		Content.Add(FString::Printf(TEXT("Port=%s"),    m_Config.Port));
+		Content.Add(FString::Printf(TEXT("Port=%d"),    m_Config.Port));
 
 		FFileHelper::SaveStringArrayToFile(Content, *InPath);
 	}

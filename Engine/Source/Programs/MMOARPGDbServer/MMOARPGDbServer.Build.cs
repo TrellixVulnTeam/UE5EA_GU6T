@@ -15,6 +15,8 @@ public class MMOARPGDbServer : ModuleRules
 
 		PrivateDependencyModuleNames.Add("CoreUObject");
 		PrivateDependencyModuleNames.Add("ApplicationCore");
+
 		PrivateDependencyModuleNames.Add("SimpleMySQL");
+		PrivateDependencyModuleNames.Add("SimpleNetChannel");
 	}
 }
