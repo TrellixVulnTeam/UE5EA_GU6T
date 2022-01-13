@@ -1,0 +1,24 @@
+{
+	"FileVersion": 3,
+	"Version": 1,
+	"VersionName": "1.0",
+	"FriendlyName": "MMOARPGComm",
+	"Description": "",
+	"Category": "Mine",
+	"CreatedBy": "Fseeeye",
+	"CreatedByURL": "",
+	"DocsURL": "",
+	"MarketplaceURL": "",
+	"SupportURL": "",
+	"CanContainContent": true,
+	"IsBetaVersion": true,
+	"IsExperimentalVersion": false,
+	"Installed": false,
+	"Modules": [
+		{
+			"Name": "MMOARPGComm",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
+		}
+	]
+}

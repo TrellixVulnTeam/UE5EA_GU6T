@@ -17,5 +17,6 @@ public class MMOARPGLoginServer : ModuleRules
 		PrivateDependencyModuleNames.Add("ApplicationCore");
 
 		PrivateDependencyModuleNames.Add("SimpleNetChannel");
+		PrivateDependencyModuleNames.Add("MMOARPGComm");
 	}
 }

@@ -17,5 +17,6 @@ public class MMOARPGGateServer : ModuleRules
 		PrivateDependencyModuleNames.Add("ApplicationCore");
 
 		PrivateDependencyModuleNames.Add("SimpleNetChannel");
+		PrivateDependencyModuleNames.Add("MMOARPGComm");
 	}
 }
