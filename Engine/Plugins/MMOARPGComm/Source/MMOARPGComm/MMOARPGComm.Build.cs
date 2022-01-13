@@ -35,8 +35,8 @@ public class MMOARPGComm : ModuleRules
 			new string[]
 			{
 				"CoreUObject",
-				"SimpleNetChannel",
 				// ... add private dependencies that you statically link with here ...	
+				"SimpleNetChannel",
 			}
 			);
 		

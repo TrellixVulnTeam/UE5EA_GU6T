@@ -1,6 +1,9 @@
 #include "MMOARPGDbClientObject.h"
 
 #include "Log/MMOARPGLoginServerLog.h"
+#include "ServerList.h"
+
+#include "Protocol/LoginProtocol.h" // Plugin: MMOARPGComm
 
 void UMMOARPGDbClientObject::Init()
 {
@@ -20,4 +23,17 @@ void UMMOARPGDbClientObject::Close()
 void UMMOARPGDbClientObject::RecvProtocol(uint32 InProtocol)
 {
 	Super::RecvProtocol(InProtocol);
+
+	switch (InProtocol)
+	{
+	case SP_LoginResponses:
+	{
+		// TODO
+		break;
+	}
+	case SP_LoginRequests:
+	{
+		UE_LOG(LogMMOARPGLoginServer, Display, TEXT("[LoginRequest] DB Client Recived"));
+	}
+	}
 }

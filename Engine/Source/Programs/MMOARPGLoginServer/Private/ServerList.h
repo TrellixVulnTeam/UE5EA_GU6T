@@ -4,6 +4,6 @@
 
 class FSimpleNetManage;
 
-FSimpleNetManage* LoginServer;
-FSimpleNetManage* DbClient;
-FSimpleNetManage* GateClientA;
+extern FSimpleNetManage* LoginServer = nullptr;
+extern FSimpleNetManage* DbClient = nullptr;
+extern FSimpleNetManage* GateClientA = nullptr;

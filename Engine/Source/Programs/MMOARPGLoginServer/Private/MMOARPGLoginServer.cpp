@@ -16,6 +16,7 @@
 
 IMPLEMENT_APPLICATION(MMOARPGLoginServer, "MMOARPGLoginServer");
 
+
 INT32_MAIN_INT32_ARGC_TCHAR_ARGV()
 {
 	GEngineLoop.PreInit(ArgC, ArgV);
@@ -43,14 +44,14 @@ INT32_MAIN_INT32_ARGC_TCHAR_ARGV()
 		return INDEX_NONE;
 	}
 	UE_LOG(LogMMOARPGLoginServer, Display, TEXT("MMO DB Client Initing..."));
-	if (!DbClient->Init())
+	if (!DbClient->Init(11221))
 	{
 		delete DbClient;
 		UE_LOG(LogMMOARPGLoginServer, Error, TEXT("MMO DB Client Init failed!"));
 		return INDEX_NONE;
 	}
 	UE_LOG(LogMMOARPGLoginServer, Display, TEXT("MMO Gate Client Initing..."));
-	if (!GateClientA->Init())
+	if (!GateClientA->Init(11222))
 	{
 		delete GateClientA;
 		UE_LOG(LogMMOARPGLoginServer, Error, TEXT("MMO Gate Client(A) Init failed!"));

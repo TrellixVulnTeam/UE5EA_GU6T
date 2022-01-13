@@ -1,7 +1,8 @@
 #include "MMOARPGDbServerObject.h"
 
-#include "Blueprint/SimpleMysqlObject.h"
-#include "SimpleMySQLibrary.h"
+#include "Blueprint/SimpleMysqlObject.h" // Plugin: SimpleMySQL
+#include "SimpleMySQLibrary.h" // Plugin: SimpleMySQL
+#include "Protocol/LoginProtocol.h" // Plugin: MMOARPGComm
 
 #include "MySQLConfig.h"
 #include "Log/MMOARPGDbServerLog.h"
@@ -56,6 +57,27 @@ void UMMOARPGDbServerObject::Close()
 void UMMOARPGDbServerObject::RecvProtocol(uint32 InProtocol)
 {
 	Super::RecvProtocol(InProtocol);
+
+	switch (InProtocol)
+	{
+	case SP_LoginRequests:
+	{
+		// Get Account & Password & LoginServer Addr
+		FString AccountString;
+		FString PasswordString;
+		FSimpleAddrInfo AddrInfo;
+		SIMPLE_PROTOCOLS_RECEIVE(SP_LoginRequests, AccountString, PasswordString, AddrInfo);
+
+		FString URL;
+		UE_LOG(LogMMOARPGDbServer, Display, TEXT("[LoginRequest] Reviced: account=%s, passwd=%s"), *AccountString, *PasswordString);
+
+		{
+			// TODO: verify
+		}
+		
+		break;
+	}
+	}
 }
 
 bool UMMOARPGDbServerObject::Post(const FString& InSQL)
