@@ -71,8 +71,7 @@ void UMMOARPGDbServerObject::RecvProtocol(uint32 InProtocol)
 		SIMPLE_PROTOCOLS_RECEIVE(SP_LoginRequests, AccountString, PasswordString, AddrInfo);
 		UE_LOG(LogMMOARPGDbServer, Display, TEXT("[LoginRequest] Reviced: account=%s, passwd=%s"), *AccountString, *PasswordString);
 
-		// TODO: send back user data
-		FString UserDataBack = TEXT("{}");
+		FString EmptyJson = TEXT("{}");
 
 		// verify
 		FString SQL = FString::Printf(TEXT("SELECT ID, user_pass FROM wp_users WHERE user_login = '%s' or user_email = '%s';"), 
@@ -116,13 +115,13 @@ void UMMOARPGDbServerObject::RecvProtocol(uint32 InProtocol)
 			else
 			{
 				ELoginType ResponseType = ELoginType::LOGIN_ACCOUNT_ERROR;
-				SIMPLE_PROTOCOLS_SEND(SP_LoginResponses, AddrInfo, ResponseType, UserDataBack);
+				SIMPLE_PROTOCOLS_SEND(SP_LoginResponses, AddrInfo, ResponseType, EmptyJson);
 			}
 		}
 		else
 		{
 			ELoginType ResponseType = ELoginType::DB_ERROR;
-			SIMPLE_PROTOCOLS_SEND(SP_LoginResponses, AddrInfo, ResponseType, UserDataBack);
+			SIMPLE_PROTOCOLS_SEND(SP_LoginResponses, AddrInfo, ResponseType, EmptyJson);
 		}		
 		break;
 	}
@@ -170,14 +169,16 @@ void UMMOARPGDbServerObject::CheckPasswordVerifyResult(const FSimpleHttpRequest&
 			}
 
 			// TODO: Send back user data
-			FString UserDataBack = TEXT("{}");
+			FString UserDataJson = TEXT("{}");
 
 			if (PV == VERIFICATION_SUCCESS)
 			{
 				// Password Verification is Success
 				if (UserID != 0)
 				{
-					// TODO: Send back user info
+					FMMOARPGUserData UserData;
+					UserData.ID = UserID;
+
 					FString SQL = FString::Printf(TEXT("SELECT user_login, user_email, user_url, display_name FROM wp_users WHERE ID=%i;"), UserID);
 					TArray<FSimpleMysqlResult> Results;
 					if (Get(SQL, Results))
@@ -188,33 +189,37 @@ void UMMOARPGDbServerObject::CheckPasswordVerifyResult(const FSimpleHttpRequest&
 							{
 								if (FString* UserLogin = Result.Rows.Find(TEXT("user_login")))
 								{
-
+									UserData.Account = *UserLogin;
 								}
 								if (FString* UserEmail = Result.Rows.Find(TEXT("user_email")))
 								{
-
+									UserData.Email = *UserEmail;
 								}
-								if (FString* UserUrl = Result.Rows.Find(TEXT("user_url")))
-								{
-
-								}
+								//if (FString* UserUrl = Result.Rows.Find(TEXT("user_url")))
+								//{
+								//	UserData.Url = UserUrl
+								//}
 								if (FString* UserDisplayName = Result.Rows.Find(TEXT("display_name")))
 								{
-
+									UserData.NickName = *UserDisplayName;
 								}
+								// TODO: AvatarURL
 							}
 						}
 					}
 
+					// serialize UserData to Json
+					NetDataParser::UserDataToJson(UserData, UserDataJson);
+
 					ELoginType ResponseType = ELoginType::LOGIN_SUCCESS;
-					SIMPLE_PROTOCOLS_SEND(SP_LoginResponses, AddrInfo, ResponseType, UserDataBack);
+					SIMPLE_PROTOCOLS_SEND(SP_LoginResponses, AddrInfo, ResponseType, UserDataJson);
 				}
 			}
 			else
 			{
 				// Password Verification is Fail
 				ELoginType ResponseType = ELoginType::LOGIN_PASSWORD_ERROR;
-				SIMPLE_PROTOCOLS_SEND(SP_LoginResponses, AddrInfo, ResponseType, UserDataBack);
+				SIMPLE_PROTOCOLS_SEND(SP_LoginResponses, AddrInfo, ResponseType, UserDataJson);
 			}
 		}
 	}

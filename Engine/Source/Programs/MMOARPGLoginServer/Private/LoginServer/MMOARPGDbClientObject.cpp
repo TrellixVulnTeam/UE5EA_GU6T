@@ -33,13 +33,13 @@ void UMMOARPGDbClientObject::RecvProtocol(uint32 InProtocol)
 		// Get Response Msg
 		FSimpleAddrInfo AddrInfo;
 		ELoginType ResponseType = ELoginType::DB_ERROR;
-		//FString UserDataBack;
-		//SIMPLE_PROTOCOLS_RECEIVE(SP_LoginResponses, AddrInfo, ResponseType, UserDataBack);
-		SIMPLE_PROTOCOLS_RECEIVE(SP_LoginResponses, AddrInfo, ResponseType);
+		FString UserDataJson;
+		SIMPLE_PROTOCOLS_RECEIVE(SP_LoginResponses, AddrInfo, ResponseType, UserDataJson);
 
-		UE_LOG(LogMMOARPGLoginServer, Display, TEXT("[LoginResponse] Login Server Recived: type=%i, back_userdata=%s"),
-			(uint32)ResponseType, *UserDataBack);
+		UE_LOG(LogMMOARPGLoginServer, Display, TEXT("[LoginResponse] Login Server Recived: type=%i, userdata=%s"),
+			(uint32)ResponseType, *UserDataJson);
 
+		// Get Gate Server Status and add to back data
 		// TODO: Take Best Gate Server depends on local Gate Client Objects
 		FMMOARPGGateStatus GateStatus;
 		if (UMMOARPGGateClientObject* GateClient = Cast<UMMOARPGGateClientObject>(GateClientA->GetController()))
@@ -52,8 +52,7 @@ void UMMOARPGDbClientObject::RecvProtocol(uint32 InProtocol)
 		}
 
 		// Forward NetFlow to User Client by Login Server
-		//SIMPLE_SERVER_SEND(LoginServer, SP_LoginResponses, AddrInfo, ResponseType, UserDataBack); // add best gate status to UserDataBack
-		SIMPLE_SERVER_SEND(LoginServer, SP_LoginResponses, AddrInfo, ResponseType, GateStatus); // add gate status
+		SIMPLE_SERVER_SEND(LoginServer, SP_LoginResponses, AddrInfo, ResponseType, UserDataJson, GateStatus); // add gate status
 
 		break;
 	}

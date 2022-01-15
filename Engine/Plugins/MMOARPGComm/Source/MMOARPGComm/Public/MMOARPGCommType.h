@@ -28,7 +28,7 @@ struct MMOARPGCOMM_API FMMOARPGUserData
 struct MMOARPGCOMM_API FMMOARPGGateStatus
 {
 	FMMOARPGGateStatus()
-		: GateConnectionNum(0)
+		: GateConnectionNum(INDEX_NONE)
 	{}
 
 	int32 GateConnectionNum;
@@ -38,6 +38,6 @@ struct MMOARPGCOMM_API FMMOARPGGateStatus
 // String(Json) <-> FMMOARPGUserData
 namespace NetDataParser
 {
-	void UserDataToJson(const FMMOARPGUserData& InUserData, FString& OutJson);
-	void JsonToUserdata(const FString& InJson, FMMOARPGUserData& OutUserData);
+	MMOARPGCOMM_API void UserDataToJson(const FMMOARPGUserData& InUserData, FString& OutJson);
+	MMOARPGCOMM_API void JsonToUserdata(const FString& InJson, FMMOARPGUserData& OutUserData);
 }
