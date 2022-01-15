@@ -32,16 +32,16 @@ void UMMOARPGDbClientObject::RecvProtocol(uint32 InProtocol)
 		// Get Response Msg
 		FSimpleAddrInfo AddrInfo;
 		ELoginType ResponseType = ELoginType::DB_ERROR;
-		FString BackMsg;
-		SIMPLE_PROTOCOLS_RECEIVE(SP_LoginResponses, AddrInfo, ResponseType, BackMsg);
+		FString UserDataBack;
+		SIMPLE_PROTOCOLS_RECEIVE(SP_LoginResponses, AddrInfo, ResponseType, UserDataBack);
 
-		UE_LOG(LogMMOARPGLoginServer, Display, TEXT("[LoginResponse] Login Server Recived: type=%i, backmsg=%s"),
-			(uint32)ResponseType, *BackMsg);
+		UE_LOG(LogMMOARPGLoginServer, Display, TEXT("[LoginResponse] Login Server Recived: type=%i, back_userdata=%s"),
+			(uint32)ResponseType, *UserDataBack);
 
 		// TODO: Get Gate Servers Info
 
 		// Forward NetFlow to User Client by Login Server
-		SIMPLE_SERVER_SEND(LoginServer, SP_LoginResponses, AddrInfo, ResponseType, BackMsg);
+		SIMPLE_SERVER_SEND(LoginServer, SP_LoginResponses, AddrInfo, ResponseType, UserDataBack);
 
 		break;
 	}
