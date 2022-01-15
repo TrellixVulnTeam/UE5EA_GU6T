@@ -1,6 +1,12 @@
 #pragma once
 #include "MMOARPGDbServerType.h"
 
+enum EPasswordVerification
+{
+	VERIFICATION_SUCCESS = 0,
+	VERIFICATION_FAIL,
+};
+
 // singleton
 class FSimpleMysqlConfig
 {

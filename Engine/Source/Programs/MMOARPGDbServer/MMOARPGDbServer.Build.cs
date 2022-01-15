@@ -18,6 +18,7 @@ public class MMOARPGDbServer : ModuleRules
 
 		PrivateDependencyModuleNames.Add("SimpleMySQL");
 		PrivateDependencyModuleNames.Add("SimpleNetChannel");
+		PrivateDependencyModuleNames.Add("SimpleHTTP");
 		PrivateDependencyModuleNames.Add("MMOARPGComm");
 	}
 }

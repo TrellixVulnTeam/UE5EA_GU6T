@@ -7,6 +7,7 @@
 
 #include "Global/SimpleNetGlobalInfo.h"
 #include "SimpleNetManage.h"
+#include "SimpleHTTPManage.h"
 
 #include "DbServer/MySQLConfig.h"
 #include "DbServer/MMOARPGDbServerObject.h"
@@ -21,7 +22,7 @@ INT32_MAIN_INT32_ARGC_TCHAR_ARGV()
 
 	// Init MySQL Config
 	FSimpleMysqlConfig::Get()->Init();
-	// Init Net Channel
+	// Init Global Setting
 	FSimpleNetGlobalInfo::Get()->Init();
 
 	// Create DB Server Instance
@@ -55,6 +56,7 @@ INT32_MAIN_INT32_ARGC_TCHAR_ARGV()
 		float DeltaS = CurrentTime - LastTime;
 
 		DbServer->Tick(DeltaS);
+		FSimpleHttpManage::Get()->Tick(DeltaS);
 
 		LastTime = CurrentTime;
 	}
