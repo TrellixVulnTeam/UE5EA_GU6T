@@ -4,7 +4,7 @@
 
 #include "UObject/SimpleController.h"
 #include "Core/SimpleMysqlLinkType.h"
-#include "SimpleHTTPManage.h"
+#include "SimpleHTTPManage.h" // Plugin: SimpleHTTP
 
 #include "MMOARPGDbServerObject.generated.h"
 

@@ -2,6 +2,8 @@
 
 #include "CoreMinimal.h"
 
+#include "SimpleNetChannelType.h" // plugin:  SimpleNetChannel
+
 enum ELoginType
 {
 	LOGIN_SUCCESS,
@@ -21,6 +23,16 @@ struct MMOARPGCOMM_API FMMOARPGUserData
 	FString Email;
 	FString NickName;
 	FString AvatarURL; // optional
+};
+
+struct MMOARPGCOMM_API FMMOARPGGateStatus
+{
+	FMMOARPGGateStatus()
+		: GateConnectionNum(0)
+	{}
+
+	int32 GateConnectionNum;
+	FSimpleAddrInfo GateAddrInfo;
 };
 
 // String(Json) <-> FMMOARPGUserData
