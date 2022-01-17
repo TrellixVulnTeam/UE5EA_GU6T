@@ -30,7 +30,7 @@ void UMMOARPGGateServerObject::RecvProtocol(uint32 InProtocol)
 	{
 		FMMOARPGGateStatus ServerStatus;
 		// Get AddrInfo of this Server
-		GetAddrInfo(ServerStatus.GateAddrInfo);
+		GetServerAddrInfo(ServerStatus.GateAddrInfo);
 		// Get current Connection Num
 		ServerStatus.GateConnectionNum = GetManage()->GetConnetionNum();
 
