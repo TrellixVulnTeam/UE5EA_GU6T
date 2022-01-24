@@ -143,7 +143,7 @@ void UMMOARPGDbServerObject::RecvProtocol(uint32 InProtocol)
 
 				FMMOARPGCharacterAppearance& Tmp = MMOARPGCharacterAppearances.Last();
 				Tmp.Name = TEXT("Test Name");
-				Tmp.CreationDate = TEXT("2022.1.24");
+				Tmp.CreationDate = FDateTime::Now().ToString();
 				Tmp.Lv = 13;
 				Tmp.SlotPos = 1;
 
