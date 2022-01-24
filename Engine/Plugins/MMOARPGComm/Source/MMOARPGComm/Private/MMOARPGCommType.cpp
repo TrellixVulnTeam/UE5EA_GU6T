@@ -41,4 +41,55 @@ namespace NetDataParser
 		}
 	}
 
+	MMOARPGCOMM_API void CharacterAppearancesToJson(const FMMOARPGCharacterAppearances& InCAs, FString& OutJson)
+	{
+		OutJson.Empty();
+		// Use Json Writer to create json string
+		TSharedPtr<TJsonWriter<TCHAR, TCondensedJsonPrintPolicy<TCHAR>>> JsonWriter =
+			TJsonWriterFactory<TCHAR, TCondensedJsonPrintPolicy<TCHAR>>::Create(&OutJson);
+
+		JsonWriter->WriteArrayStart();
+
+		for (auto &CA : InCAs)
+		{
+			JsonWriter->WriteObjectStart();
+
+			JsonWriter->WriteValue(TEXT("Name"), CA.Name);
+			JsonWriter->WriteValue(TEXT("CreationDate"), CA.CreationDate);
+			JsonWriter->WriteValue(TEXT("Lv"), CA.Lv);
+			JsonWriter->WriteValue(TEXT("SlotPos"), CA.SlotPos);
+			//...
+
+			JsonWriter->WriteObjectEnd();
+		}
+
+		JsonWriter->WriteArrayEnd();
+		JsonWriter->Close();
+	}
+
+	MMOARPGCOMM_API void JsonToCharacterAppearances(const FString& InJson, FMMOARPGCharacterAppearances& OutCAs)
+	{
+		// Read and Deserialize Json
+		TSharedRef<TJsonReader<>> JsonReader = TJsonReaderFactory<>::Create(InJson);
+		TArray<TSharedPtr<FJsonValue>> ReadRoot;
+
+		if (FJsonSerializer::Deserialize(JsonReader, ReadRoot))
+		{
+			for (auto &CAJsonValue : ReadRoot)
+			{
+				OutCAs.Add(FMMOARPGCharacterAppearance());
+				FMMOARPGCharacterAppearance& CA = OutCAs.Last();
+
+				if (TSharedPtr<FJsonObject> CAJsonObject = CAJsonValue->AsObject())
+				{
+					CA.Name         = CAJsonObject->GetStringField(TEXT("Name"));
+					CA.CreationDate = CAJsonObject->GetStringField(TEXT("CreationDate"));
+					CA.Lv           = CAJsonObject->GetIntegerField(TEXT("Lv"));
+					CA.SlotPos      = CAJsonObject->GetIntegerField(TEXT("SlotPos"));
+					//...
+				}
+			}
+		}
+	}
+
 }

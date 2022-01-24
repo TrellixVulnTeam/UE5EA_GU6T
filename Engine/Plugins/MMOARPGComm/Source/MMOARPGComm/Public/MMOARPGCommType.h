@@ -35,9 +35,26 @@ struct MMOARPGCOMM_API FMMOARPGGateStatus
 	FSimpleAddrInfo GateAddrInfo;
 };
 
+struct MMOARPGCOMM_API FMMOARPGCharacterAppearance
+{
+	FMMOARPGCharacterAppearance()
+		: Lv(INDEX_NONE), SlotPos(INDEX_NONE)
+	{}
+
+	FString Name;
+	FString CreationDate;
+	int32 Lv;
+	int32 SlotPos;
+};
+
+typedef TArray<FMMOARPGCharacterAppearance> FMMOARPGCharacterAppearances;
+
 // String(Json) <-> FMMOARPGUserData
 namespace NetDataParser
 {
 	MMOARPGCOMM_API void UserDataToJson(const FMMOARPGUserData& InUserData, FString& OutJson);
 	MMOARPGCOMM_API void JsonToUserdata(const FString& InJson, FMMOARPGUserData& OutUserData);
+
+	MMOARPGCOMM_API void CharacterAppearancesToJson(const FMMOARPGCharacterAppearances& InCAs, FString& OutJson);
+	MMOARPGCOMM_API void JsonToCharacterAppearances(const FString& InJson, FMMOARPGCharacterAppearances& OutCAs);
 }

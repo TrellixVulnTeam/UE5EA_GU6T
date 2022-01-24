@@ -25,7 +25,7 @@ INT32_MAIN_INT32_ARGC_TCHAR_ARGV()
 
 	// Create Gate Server Instance
 	GateServer = FSimpleNetManage::CreateManage(ESimpleNetLinkState::LINKSTATE_LISTEN, ESimpleSocketType::SIMPLESOCKETTYPE_TCP);
-	DbClient = FSimpleNetManage::CreateManage(ESimpleNetLinkState::LINKSTATE_CONNET, ESimpleSocketType::SIMPLESOCKETTYPE_TCP);
+	DbClient   = FSimpleNetManage::CreateManage(ESimpleNetLinkState::LINKSTATE_CONNET, ESimpleSocketType::SIMPLESOCKETTYPE_TCP);
 	 
 	// Global Register Reflect Class
 	GateServer->NetworkObjectClass = UMMOARPGGateServerObject::StaticClass();

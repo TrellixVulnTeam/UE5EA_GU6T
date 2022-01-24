@@ -58,7 +58,7 @@ TSharedRef<SWidget> FDetailWidgetExtensionHandler::GenerateExtensionWidget(const
 	const bool bIsEditable = Property->HasAnyPropertyFlags(CPF_Edit | CPF_EditConst);
 	const bool bDoSignaturesMatch = DelegateProperty->SignatureFunction->GetReturnProperty()->SameType(Property);
 
-	if ( !ensure(bIsEditable && bDoSignaturesMatch) )
+if ( !ensure(bIsEditable && bDoSignaturesMatch) )
 	{
 		return SNullWidget::NullWidget;
 	}

@@ -4,6 +4,7 @@
 #include "SimpleMySQLibrary.h" // Plugin: SimpleMySQL
 #include "Global/SimpleNetGlobalInfo.h" // Plugin: SimpleNetChannel
 #include "Protocol/LoginProtocol.h" // Plugin: MMOARPGComm
+#include "Protocol/RoleHallProtocol.h" // Plugin: MMOARPGComm
 #include "MMOARPGCommType.h" // Plugin: MMOARPGComm
 
 #include "MySQLConfig.h"
@@ -62,69 +63,98 @@ void UMMOARPGDbServerObject::RecvProtocol(uint32 InProtocol)
 
 	switch (InProtocol)
 	{
-	case SP_LoginRequests:
-	{
-		// Get Account & Password & LoginServer Addr
-		FString AccountString;
-		FString PasswordString;
-		FSimpleAddrInfo AddrInfo;
-		SIMPLE_PROTOCOLS_RECEIVE(SP_LoginRequests, AccountString, PasswordString, AddrInfo);
-		UE_LOG(LogMMOARPGDbServer, Display, TEXT("[LoginRequest] Reviced: account=%s, passwd=%s"), *AccountString, *PasswordString);
-
-		FString EmptyJson = TEXT("{}");
-
-		// verify
-		FString SQL = FString::Printf(TEXT("SELECT ID, user_pass FROM wp_users WHERE user_login = '%s' or user_email = '%s';"), 
-			*AccountString, *AccountString);
-		TArray<FSimpleMysqlResult> Results;
-		// send account verify SQL to DB
-		if (Get(SQL, Results))
+		case SP_LoginRequests:
 		{
-			// account verify successful
-			if (Results.Num() > 0)
+			// Get Account & Password & LoginServer Addr
+			FString AccountString;
+			FString PasswordString;
+			FSimpleAddrInfo AddrInfo;
+			SIMPLE_PROTOCOLS_RECEIVE(SP_LoginRequests, AccountString, PasswordString, AddrInfo);
+			UE_LOG(LogMMOARPGDbServer, Display, TEXT("[LoginRequest] Reviced: account=%s, passwd=%s"), *AccountString, *PasswordString);
+
+			FString EmptyJson = TEXT("{}");
+
+			// verify
+			FString SQL = FString::Printf(TEXT("SELECT ID, user_pass FROM wp_users WHERE user_login = '%s' or user_email = '%s';"), 
+				*AccountString, *AccountString);
+			TArray<FSimpleMysqlResult> Results;
+			// send account verify SQL to DB
+			if (Get(SQL, Results))
 			{
-				for (auto& Result : Results)
+				// account verify successful
+				if (Results.Num() > 0)
 				{
-					int32 UserID = 0;
-					if (FString* IDString = Result.Rows.Find(TEXT("ID")))
+					for (auto& Result : Results)
 					{
-						UserID = FCString::Atoi(**IDString);
-					}
-					// send password verify HTTP query to Wordpress
-					if (FString* UserPass = Result.Rows.Find(TEXT("user_pass")))
-					{
-						// http://192.168.50.149/passwdverify.php?UserID=1&EncryptedPassword=$P$Bi6eytHd7TezOoXlZC.YMIrnz7t/8K1&Password=admin&IP=192.168.0.1&Port=8080&Channel=1
-						FString WordpressIp = FSimpleNetGlobalInfo::Get()->GetInfo().PublicIP;
-						FString PasswdVerifyURL = FString::Printf(TEXT("http://%s/passwdverify.php"), *WordpressIp);
-						FString PasswdVerifyParm = FString::Printf(TEXT("EncryptedPassword=%s&Password=%s&IP=%i&Port=%i&Channel=%s&UserID=%i"),
-							**UserPass,
-							*PasswordString,
-							AddrInfo.Addr.IP,
-							AddrInfo.Addr.Port,
-							*AddrInfo.ChannelID.ToString(),
-							UserID
-						);
+						int32 UserID = 0;
+						if (FString* IDString = Result.Rows.Find(TEXT("ID")))
+						{
+							UserID = FCString::Atoi(**IDString);
+						}
+						// send password verify HTTP query to Wordpress
+						if (FString* UserPass = Result.Rows.Find(TEXT("user_pass")))
+						{
+							// http://192.168.50.149/passwdverify.php?UserID=1&EncryptedPassword=$P$Bi6eytHd7TezOoXlZC.YMIrnz7t/8K1&Password=admin&IP=192.168.0.1&Port=8080&Channel=1
+							FString WordpressIp = FSimpleNetGlobalInfo::Get()->GetInfo().PublicIP;
+							FString PasswdVerifyURL = FString::Printf(TEXT("http://%s/passwdverify.php"), *WordpressIp);
+							FString PasswdVerifyParm = FString::Printf(TEXT("EncryptedPassword=%s&Password=%s&IP=%i&Port=%i&Channel=%s&UserID=%i"),
+								**UserPass,
+								*PasswordString,
+								AddrInfo.Addr.IP,
+								AddrInfo.Addr.Port,
+								*AddrInfo.ChannelID.ToString(),
+								UserID
+							);
 
-						FSimpleHTTPResponseDelegate Delegate;
-						Delegate.SimpleCompleteDelegate.BindUObject(this, &UMMOARPGDbServerObject::CheckPasswordVerifyResult);
+							FSimpleHTTPResponseDelegate Delegate;
+							Delegate.SimpleCompleteDelegate.BindUObject(this, &UMMOARPGDbServerObject::CheckPasswordVerifyResult);
 
-						SIMPLE_HTTP.PostRequest(*PasswdVerifyURL, *PasswdVerifyParm, Delegate);
+							SIMPLE_HTTP.PostRequest(*PasswdVerifyURL, *PasswdVerifyParm, Delegate);
+						}
 					}
+				}
+				else
+				{
+					ELoginType ResponseType = ELoginType::LOGIN_ACCOUNT_ERROR;
+					SIMPLE_PROTOCOLS_SEND(SP_LoginResponses, AddrInfo, ResponseType, EmptyJson);
 				}
 			}
 			else
 			{
-				ELoginType ResponseType = ELoginType::LOGIN_ACCOUNT_ERROR;
+				ELoginType ResponseType = ELoginType::DB_ERROR;
 				SIMPLE_PROTOCOLS_SEND(SP_LoginResponses, AddrInfo, ResponseType, EmptyJson);
-			}
+			}		
+			break;
 		}
-		else
+		case SP_CharacterAppearancesRequests:
 		{
-			ELoginType ResponseType = ELoginType::DB_ERROR;
-			SIMPLE_PROTOCOLS_SEND(SP_LoginResponses, AddrInfo, ResponseType, EmptyJson);
-		}		
-		break;
-	}
+			// Get User ID
+			int32 UserID = INDEX_NONE;
+			FSimpleAddrInfo AddrInfo;
+			SIMPLE_PROTOCOLS_RECEIVE(SP_CharacterAppearancesRequests, UserID, AddrInfo);
+			UE_LOG(LogMMOARPGDbServer, Display, TEXT("[SP_CharacterAppearancesRequests] DB Server Recived: user id=%i"),
+				UserID);
+
+			if (UserID != INDEX_NONE)
+			{
+				// TODO: get appearance data from DB
+				FMMOARPGCharacterAppearances MMOARPGCharacterAppearances;
+				MMOARPGCharacterAppearances.Add(FMMOARPGCharacterAppearance());
+
+				FMMOARPGCharacterAppearance& Tmp = MMOARPGCharacterAppearances.Last();
+				Tmp.Name = TEXT("Test Name");
+				Tmp.CreationDate = TEXT("2022.1.24");
+				Tmp.Lv = 13;
+				Tmp.SlotPos = 1;
+
+				FString CharacterAppearancesJson;
+				NetDataParser::CharacterAppearancesToJson(MMOARPGCharacterAppearances, CharacterAppearancesJson);
+
+				SIMPLE_PROTOCOLS_SEND(SP_CharacterAppearancesResponses, AddrInfo, CharacterAppearancesJson);
+			}
+
+			break;
+		}
 	}
 }
 
