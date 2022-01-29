@@ -33,6 +33,20 @@ void UMMOARPGDbServerObject::Init()
 		FSimpleMysqlConfig::Get()->GetInfo().Port,
 		FSimpleMysqlConfig::Get()->GetInfo().ClientFlags
 	);
+
+	// Init Character Appearance Table in MySQL
+	FString CreateCharacterCA_SQL = TEXT("CREATE TABLE IF NOT EXISTS `mmoarpg_characters_ca`(\
+		`id` INT UNSIGNED AUTO_INCREMENT,\
+		`mmoarpg_name` VARCHAR(100) NOT NULL,\
+		`mmoarpg_date` VARCHAR(100) NOT NULL,\
+		`mmoarpg_slot` INT NOT NULL,\
+		PRIMARY KEY(`ID`)\
+		) ENGINE = INNODB DEFAULT CHARSET = utf8mb4; ");
+
+	if (!Post(CreateCharacterCA_SQL))
+	{
+		UE_LOG(LogMMOARPGDbServer, Display, TEXT("DB Table `Character_CA` Creation Failed!"));
+	}
 }
 
 void UMMOARPGDbServerObject::Tick(float DeltaTime)
@@ -135,22 +149,238 @@ void UMMOARPGDbServerObject::RecvProtocol(uint32 InProtocol)
 			UE_LOG(LogMMOARPGDbServer, Display, TEXT("[SP_CharacterAppearancesRequests] DB Server Recived: user id=%i"),
 				UserID);
 
-			if (UserID != INDEX_NONE)
+			if (UserID > 0)
 			{
-				// TODO: get appearance data from DB
-				FMMOARPGCharacterAppearances MMOARPGCharacterAppearances;
-				MMOARPGCharacterAppearances.Add(FMMOARPGCharacterAppearance());
+				/* Step1: Get Character IDs metadata */
+				FString CAIDsString;
 
-				FMMOARPGCharacterAppearance& Tmp = MMOARPGCharacterAppearances.Last();
-				Tmp.Name = TEXT("Test Name");
-				Tmp.CreationDate = FDateTime::Now().ToString();
-				Tmp.Lv = 13;
-				Tmp.SlotPos = 1;
+				FString GetSlotsSQL = FString::Printf(TEXT("SELECT meta_value FROM wp_usermeta WHERE user_id = %i and meta_key = 'character_ca_id';"), UserID);
+				TArray<FSimpleMysqlResult> GetSlotsResults;
+				if (Get(GetSlotsSQL, GetSlotsResults))
+				{
+					// get character slots
+					if (GetSlotsResults.Num() > 0)
+					{
+						for (auto& GetSlotsResult : GetSlotsResults)
+						{
+							if (FString* SlotsString = GetSlotsResult.Rows.Find(TEXT("meta_value")))
+							{
+								TArray<FString> CAIDs;
+								SlotsString->ParseIntoArray(CAIDs, TEXT("|"));
+								for (auto& CAID : CAIDs)
+								{
+									CAIDsString += CAID + TEXT(",");
+								}
+								CAIDsString.RemoveFromEnd(TEXT(","));
+							}
+						}
+					}
+					// this user haven't create any character
+					else
+					{
+					}
+				}
+				else
+				{
+				}
+
+				/* Step2: Get Character Appearances by IDs */
+				FMMOARPGCharacterAppearances CharacterAppearances;
+
+				if (!CAIDsString.IsEmpty())
+				{
+					FString GetCASQL = FString::Printf(TEXT("SELECT * FROM mmoarpg_characters_ca WHERE id IN (%s);"), *CAIDsString);
+					TArray<FSimpleMysqlResult> GetCASQLResults;
+					if (Get(GetCASQL, GetCASQLResults))
+					{
+						// get character appearances
+						if (GetCASQLResults.Num() > 0)
+						{
+							for (auto& GetCASQLResult : GetCASQLResults)
+							{
+								CharacterAppearances.Add(FMMOARPGCharacterAppearance());
+								FMMOARPGCharacterAppearance& NewCA = CharacterAppearances.Last();
+
+								if (FString* Name = GetCASQLResult.Rows.Find(TEXT("mmoarpg_name")))
+								{
+									NewCA.Name = *Name;
+								}
+								if (FString* Date = GetCASQLResult.Rows.Find(TEXT("mmoarpg_date")))
+								{
+									NewCA.CreationDate = *Date;
+								}
+								if (FString* Slot = GetCASQLResult.Rows.Find(TEXT("mmoarpg_slot")))
+								{
+									NewCA.SlotPos = FCString::Atoi(**Slot);
+								}
+							}
+						}
+						// didn't get any character appearance
+						else
+						{
+						}
+					}
+					else
+					{
+					}
+				}
 
 				FString CharacterAppearancesJson;
-				NetDataParser::CharacterAppearancesToJson(MMOARPGCharacterAppearances, CharacterAppearancesJson);
+				NetDataParser::CharacterAppearancesToJson(CharacterAppearances, CharacterAppearancesJson);
 
 				SIMPLE_PROTOCOLS_SEND(SP_CharacterAppearancesResponses, AddrInfo, CharacterAppearancesJson);
+			}
+
+			break;
+		}
+		case SP_CheckCharacterNameRequests:
+		{
+			// Get User ID & Character Name
+			int32 UserID = INDEX_NONE;
+			FString CharacterName;
+			FSimpleAddrInfo AddrInfo;
+			SIMPLE_PROTOCOLS_RECEIVE(SP_CheckCharacterNameRequests, UserID, CharacterName, AddrInfo);
+
+			UE_LOG(LogMMOARPGDbServer, Display, TEXT("[SP_CheckCharacterNameRequests] DB Server Recived: user id=%i, name=%s"),
+				UserID, *CharacterName);
+
+			ECheckNameType ResponseType = ECheckNameType::UNKNOW_ERROR;
+			if (UserID > 0)
+			{
+				ResponseType = CheckName(CharacterName);
+			}
+
+			SIMPLE_PROTOCOLS_SEND(SP_CheckCharacterNameResponses, ResponseType, AddrInfo);
+
+			break;
+		}
+		case SP_CreateCharacterRequests:
+		{
+			// Get User ID
+			int32 UserID = INDEX_NONE;
+			FString CAJson;
+			FSimpleAddrInfo AddrInfo;
+			SIMPLE_PROTOCOLS_RECEIVE(SP_CreateCharacterRequests, UserID, CAJson, AddrInfo);
+
+			UE_LOG(LogMMOARPGDbServer, Display, TEXT("[SP_CreateCharacterRequests] DB Server Recived: user id=%i, ca_json=%s"),
+				UserID, *CAJson);
+
+			if (UserID != INDEX_NONE)
+			{
+				// Deserialize character appearance json
+				FMMOARPGCharacterAppearance CA;
+				NetDataParser::JsonToCharacterAppearance(CAJson, CA);
+
+				if (CA.SlotPos >= 0 && CA.SlotPos < 3 && CA.Lv == 1) // verify character appearance data
+				{
+					bool bCreateCharacter = false;
+					ECheckNameType CheckNameType = CheckName(CA.Name);
+					if (CheckNameType == ECheckNameType::NAME_NOT_EXIST)
+					{
+						bool bIsHasCA = false;
+						/* Step1: Get Character IDs metadata */
+						TArray<FString> CAIDs;
+
+						FString GetSlotsSQL = FString::Printf(TEXT("SELECT meta_value FROM wp_usermeta WHERE user_id = %i and meta_key = 'character_ca_id';"), UserID);
+						TArray<FSimpleMysqlResult> GetSlotsResults;
+						if (Get(GetSlotsSQL, GetSlotsResults))
+						{
+							// get character slots
+							if (GetSlotsResults.Num() > 0)
+							{
+								for (auto& GetSlotsResult : GetSlotsResults)
+								{
+									if (FString* SlotsString = GetSlotsResult.Rows.Find(TEXT("meta_value")))
+									{
+										SlotsString->ParseIntoArray(CAIDs, TEXT("|"));
+									}
+								}
+
+								bIsHasCA = true;
+							}
+							// this user haven't create any character
+							else
+							{
+							}
+
+							bCreateCharacter = true;
+						}
+						else
+						{
+						}
+
+						/* Step2: Insert Character Appearance data into DB */
+						if (bCreateCharacter)
+						{
+							FString InsertCASQL = FString::Printf(TEXT("INSERT INTO mmoarpg_characters_ca (mmoarpg_name, mmoarpg_date, mmoarpg_slot) VALUES('%s', '%s', '%i');"),
+								*CA.Name, *CA.CreationDate, CA.SlotPos);
+
+							if (Post(InsertCASQL))
+							{
+								FString GetCaIdSQL = FString::Printf(TEXT("SELECT id FROM mmoarpg_characters_ca WHERE mmoarpg_name = '%s';"), *CA.Name);
+								TArray<FSimpleMysqlResult> GetCaIdResults;
+								if (Get(GetCaIdSQL, GetCaIdResults))
+								{
+									// insert successfully
+									if (GetCaIdResults.Num() > 0)
+									{
+										for (auto& GetCaIdResult : GetCaIdResults)
+										{
+											if (FString* IDString = GetCaIdResult.Rows.Find(TEXT("id")))
+											{
+												CAIDs.Add(*IDString);
+											}
+										}
+									}
+									// insert unknow error.
+									else
+									{
+									}
+								}
+								else
+								{
+									bCreateCharacter = false;
+								}
+							}
+							else
+							{
+								bCreateCharacter = false;
+							}
+						}
+
+						/* Step3: Update Character metadata */
+						if (bCreateCharacter)
+						{
+							FString NewCAIDsString;
+							for (auto& ID : CAIDs)
+							{
+								NewCAIDsString += ID;
+								NewCAIDsString += TEXT("|");
+							}
+							NewCAIDsString.RemoveFromEnd(TEXT("|"));
+
+							FString UpdateMetaSQL;
+							if (bIsHasCA)
+							{
+								UpdateMetaSQL = FString::Printf(TEXT("UPDATE wp_usermeta SET meta_value = '%s' WHERE meta_key = 'character_ca_id' AND user_id = %i;"),
+									*NewCAIDsString, UserID);
+							}
+							else
+							{
+								UpdateMetaSQL = FString::Printf(TEXT("INSERT INTO wp_usermeta (user_id, meta_key, meta_value) VALUES(%i, 'character_ca_id', '%s');"),
+									UserID, *NewCAIDsString);
+							}
+
+							if (!Post(UpdateMetaSQL))
+							{
+								bCreateCharacter = false;
+							}
+						}
+					}
+					
+					SIMPLE_PROTOCOLS_SEND(SP_CreateCharacterResponses, CheckNameType, bCreateCharacter, CAJson, AddrInfo);
+				}
+
 			}
 
 			break;
@@ -253,6 +483,39 @@ void UMMOARPGDbServerObject::CheckPasswordVerifyResult(const FSimpleHttpRequest&
 			}
 		}
 	}
+}
+
+ECheckNameType UMMOARPGDbServerObject::CheckName(FString& InCharacterName)
+{
+	ECheckNameType ResponseType = ECheckNameType::UNKNOW_ERROR;
+	
+	if (!InCharacterName.IsEmpty())
+	{
+		// Check Character Name
+		FString CheckSQL = FString::Printf(TEXT("SELECT id FROM mmoarpg_characters_ca WHERE mmoarpg_name = \"%s\";"), *InCharacterName);
+
+		TArray<FSimpleMysqlResult> Results;
+		// send character name verify SQL to DB
+		if (Get(CheckSQL, Results))
+		{
+			// character name is existed
+			if (Results.Num() > 0)
+			{
+				ResponseType = ECheckNameType::NAME_EXIST;
+			}
+			// character name isn't existed
+			else
+			{
+				ResponseType = ECheckNameType::NAME_NOT_EXIST;
+			}
+		}
+		else
+		{
+			ResponseType = ECheckNameType::DB_ERROR;
+		}
+	}
+
+	return ResponseType;
 }
 
 bool UMMOARPGDbServerObject::Post(const FString& InSQL)

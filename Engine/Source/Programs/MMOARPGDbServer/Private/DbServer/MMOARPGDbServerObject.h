@@ -4,6 +4,8 @@
 
 #include "UObject/SimpleController.h"
 #include "Core/SimpleMysqlLinkType.h"
+
+#include "MMOARPGCommType.h"
 #include "SimpleHTTPManage.h" // Plugin: SimpleHTTP
 
 #include "MMOARPGDbServerObject.generated.h"
@@ -24,6 +26,9 @@ public:
 protected:
 	UFUNCTION()
 	void CheckPasswordVerifyResult(const FSimpleHttpRequest& InRequest, const FSimpleHttpResponse& InResponse, bool bLinkSuccessfull);
+
+private:
+	ECheckNameType CheckName(FString& InCharacterName);
 
 public:
 	bool Post(const FString& InSQL);

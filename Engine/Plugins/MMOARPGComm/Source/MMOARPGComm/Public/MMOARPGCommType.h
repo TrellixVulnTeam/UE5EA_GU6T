@@ -4,12 +4,20 @@
 
 #include "SimpleNetChannelType.h" // plugin:  SimpleNetChannel
 
-enum ELoginType
+enum class ELoginType
 {
 	LOGIN_SUCCESS,
 	LOGIN_ACCOUNT_ERROR,
 	LOGIN_PASSWORD_ERROR,
 	DB_ERROR,
+};
+
+enum class ECheckNameType
+{
+	NAME_NOT_EXIST,
+	NAME_EXIST,
+	DB_ERROR,
+	UNKNOW_ERROR
 };
 
 struct MMOARPGCOMM_API FMMOARPGUserData
@@ -57,4 +65,7 @@ namespace NetDataParser
 
 	MMOARPGCOMM_API void CharacterAppearancesToJson(const FMMOARPGCharacterAppearances& InCAs, FString& OutJson);
 	MMOARPGCOMM_API void JsonToCharacterAppearances(const FString& InJson, FMMOARPGCharacterAppearances& OutCAs);
+
+	MMOARPGCOMM_API void CharacterAppearanceToJson(const FMMOARPGCharacterAppearance& InCA, FString& OutJson);
+	MMOARPGCOMM_API void JsonToCharacterAppearance(const FString& InJson, FMMOARPGCharacterAppearance& OutCA);
 }

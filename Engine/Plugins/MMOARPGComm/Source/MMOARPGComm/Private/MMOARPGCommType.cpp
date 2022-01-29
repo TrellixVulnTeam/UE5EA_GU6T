@@ -92,4 +92,39 @@ namespace NetDataParser
 		}
 	}
 
+	MMOARPGCOMM_API void CharacterAppearanceToJson(const FMMOARPGCharacterAppearance& InCA, FString& OutJson)
+	{
+		OutJson.Empty();
+		// Use Json Writer to create json string
+		TSharedPtr<TJsonWriter<TCHAR, TCondensedJsonPrintPolicy<TCHAR>>> JsonWriter =
+			TJsonWriterFactory<TCHAR, TCondensedJsonPrintPolicy<TCHAR>>::Create(&OutJson);
+
+		JsonWriter->WriteObjectStart();
+
+		JsonWriter->WriteValue(TEXT("Name"), InCA.Name);
+		JsonWriter->WriteValue(TEXT("CreationDate"), InCA.CreationDate);
+		JsonWriter->WriteValue(TEXT("Lv"), InCA.Lv);
+		JsonWriter->WriteValue(TEXT("SlotPos"), InCA.SlotPos);
+		//...
+
+		JsonWriter->WriteObjectEnd();
+		JsonWriter->Close();
+	}
+
+	MMOARPGCOMM_API void JsonToCharacterAppearance(const FString& InJson, FMMOARPGCharacterAppearance& OutCA)
+	{
+		// Read and Deserialize Json
+		TSharedRef<TJsonReader<>> JsonReader = TJsonReaderFactory<>::Create(InJson);
+		TSharedPtr<FJsonObject> ReadRoot;
+
+		if (FJsonSerializer::Deserialize(JsonReader, ReadRoot))
+		{
+			OutCA.Name         = ReadRoot->GetStringField(TEXT("Name"));
+			OutCA.CreationDate = ReadRoot->GetStringField(TEXT("CreationDate"));
+			OutCA.Lv           = ReadRoot->GetIntegerField(TEXT("Lv"));
+			OutCA.SlotPos      = ReadRoot->GetIntegerField(TEXT("SlotPos"));
+			//...
+		}
+	}
+
 }
