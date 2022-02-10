@@ -40,6 +40,9 @@ void UMMOARPGDbServerObject::Init()
 		`mmoarpg_name` VARCHAR(100) NOT NULL,\
 		`mmoarpg_date` VARCHAR(100) NOT NULL,\
 		`mmoarpg_slot` INT NOT NULL,\
+		`leg_size` double(11,4) DEFAULT '0.00',\
+		`waist_size` double(11,4) DEFAULT '0.00',\
+		`arm_size` double(11,4) DEFAULT '0.00',\
 		PRIMARY KEY(`ID`)\
 		) ENGINE = INNODB DEFAULT CHARSET = utf8mb4; ");
 
@@ -213,6 +216,18 @@ void UMMOARPGDbServerObject::RecvProtocol(uint32 InProtocol)
 								{
 									NewCA.SlotPos = FCString::Atoi(**Slot);
 								}
+								if (FString* LegSize = GetCASQLResult.Rows.Find(TEXT("leg_size")))
+								{
+									NewCA.LegSize = FCString::Atof(**LegSize);
+								}
+								if (FString* WaistSize = GetCASQLResult.Rows.Find(TEXT("waist_size")))
+								{
+									NewCA.WaistSize = FCString::Atof(**WaistSize);
+								}
+								if (FString* ArmSize = GetCASQLResult.Rows.Find(TEXT("arm_size")))
+								{
+									NewCA.ArmSize = FCString::Atof(**ArmSize);
+								}
 							}
 						}
 						// didn't get any character appearance
@@ -271,7 +286,11 @@ void UMMOARPGDbServerObject::RecvProtocol(uint32 InProtocol)
 				FMMOARPGCharacterAppearance CA;
 				NetDataParser::JsonToCharacterAppearance(CAJson, CA);
 
-				if (CA.SlotPos >= 0 && CA.SlotPos < 3 && CA.Lv == 1) // verify character appearance data
+				if (CA.SlotPos >= 0 && CA.SlotPos < 3 
+					&& CA.Lv == INDEX_NONE
+					&& CA.LegSize <= 10.f && CA.LegSize >= 0.f
+					&& CA.WaistSize <= 10.f && CA.WaistSize >= 0.f
+					&& CA.ArmSize <= 10.f && CA.ArmSize >= 0.f) // verify character appearance data
 				{
 					bool bCreateCharacter = false;
 					ECheckNameType CheckNameType = CheckName(CA.Name);
@@ -282,9 +301,13 @@ void UMMOARPGDbServerObject::RecvProtocol(uint32 InProtocol)
 						TArray<FString> CAIDs;
 
 						FString GetSlotsSQL = FString::Printf(TEXT("SELECT meta_value FROM wp_usermeta WHERE user_id = %i and meta_key = 'character_ca_id';"), UserID);
+						UE_LOG(LogMMOARPGDbServer, Display, TEXT("[SP_CreateCharacterRequests] excute Get CA ID SQL: %s"),
+							*GetSlotsSQL);
+
 						TArray<FSimpleMysqlResult> GetSlotsResults;
 						if (Get(GetSlotsSQL, GetSlotsResults))
 						{
+							UE_LOG(LogMMOARPGDbServer, Display, TEXT("[SP_CreateCharacterRequests] Get CA ID SQL success."));
 							// get character slots
 							if (GetSlotsResults.Num() > 0)
 							{
@@ -312,12 +335,16 @@ void UMMOARPGDbServerObject::RecvProtocol(uint32 InProtocol)
 						/* Step2: Insert Character Appearance data into DB */
 						if (bCreateCharacter)
 						{
-							FString InsertCASQL = FString::Printf(TEXT("INSERT INTO mmoarpg_characters_ca (mmoarpg_name, mmoarpg_date, mmoarpg_slot) VALUES('%s', '%s', '%i');"),
-								*CA.Name, *CA.CreationDate, CA.SlotPos);
+							FString InsertCASQL = FString::Printf(TEXT("INSERT INTO mmoarpg_characters_ca (mmoarpg_name, mmoarpg_date, mmoarpg_slot, leg_size, waist_size, arm_size) VALUES('%s', '%s', %i, %.2lf, %.2lf, %.2lf);"),
+								*CA.Name, *CA.CreationDate, CA.SlotPos, CA.LegSize, CA.WaistSize, CA.ArmSize);
+							UE_LOG(LogMMOARPGDbServer, Display, TEXT("[SP_CreateCharacterRequests] excute Insert CA SQL: %s"),
+								*InsertCASQL);
 
 							if (Post(InsertCASQL))
 							{
+								UE_LOG(LogMMOARPGDbServer, Display, TEXT("[SP_CreateCharacterRequests] Insert CA SQL success."));
 								FString GetCaIdSQL = FString::Printf(TEXT("SELECT id FROM mmoarpg_characters_ca WHERE mmoarpg_name = '%s';"), *CA.Name);
+
 								TArray<FSimpleMysqlResult> GetCaIdResults;
 								if (Get(GetCaIdSQL, GetCaIdResults))
 								{
@@ -370,14 +397,21 @@ void UMMOARPGDbServerObject::RecvProtocol(uint32 InProtocol)
 								UpdateMetaSQL = FString::Printf(TEXT("INSERT INTO wp_usermeta (user_id, meta_key, meta_value) VALUES(%i, 'character_ca_id', '%s');"),
 									UserID, *NewCAIDsString);
 							}
+							UE_LOG(LogMMOARPGDbServer, Display, TEXT("[SP_CreateCharacterRequests] excute Update Metadata SQL: %s"),
+								*UpdateMetaSQL);
 
 							if (!Post(UpdateMetaSQL))
 							{
 								bCreateCharacter = false;
 							}
+							else
+							{
+								UE_LOG(LogMMOARPGDbServer, Display, TEXT("[SP_CreateCharacterRequests] Update Metadata SQL success."));
+							}
 						}
 					}
 					
+					UE_LOG(LogMMOARPGDbServer, Display, TEXT("[SP_CreateCharacterRequests] Sending back rst. Done."));
 					SIMPLE_PROTOCOLS_SEND(SP_CreateCharacterResponses, CheckNameType, bCreateCharacter, CAJson, AddrInfo);
 				}
 

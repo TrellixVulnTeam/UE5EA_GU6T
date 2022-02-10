@@ -46,13 +46,23 @@ struct MMOARPGCOMM_API FMMOARPGGateStatus
 struct MMOARPGCOMM_API FMMOARPGCharacterAppearance
 {
 	FMMOARPGCharacterAppearance()
-		: Lv(INDEX_NONE), SlotPos(INDEX_NONE)
+		: Lv(INDEX_NONE)
+		, SlotPos(INDEX_NONE)
+		, LegSize(0.f)
+		, WaistSize(0.f)
+		, ArmSize(0.f)
 	{}
+
+	void Reset();
 
 	FString Name;
 	FString CreationDate;
 	int32 Lv;
 	int32 SlotPos;
+
+	float LegSize;
+	float WaistSize;
+	float ArmSize;
 };
 
 typedef TArray<FMMOARPGCharacterAppearance> FMMOARPGCharacterAppearances;

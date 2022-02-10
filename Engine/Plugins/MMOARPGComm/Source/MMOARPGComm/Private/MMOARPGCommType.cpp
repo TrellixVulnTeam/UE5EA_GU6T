@@ -58,6 +58,9 @@ namespace NetDataParser
 			JsonWriter->WriteValue(TEXT("CreationDate"), CA.CreationDate);
 			JsonWriter->WriteValue(TEXT("Lv"), CA.Lv);
 			JsonWriter->WriteValue(TEXT("SlotPos"), CA.SlotPos);
+			JsonWriter->WriteValue(TEXT("LegSize"), CA.LegSize);
+			JsonWriter->WriteValue(TEXT("WaistSize"), CA.WaistSize);
+			JsonWriter->WriteValue(TEXT("ArmSize"), CA.ArmSize);
 			//...
 
 			JsonWriter->WriteObjectEnd();
@@ -86,6 +89,9 @@ namespace NetDataParser
 					CA.CreationDate = CAJsonObject->GetStringField(TEXT("CreationDate"));
 					CA.Lv           = CAJsonObject->GetIntegerField(TEXT("Lv"));
 					CA.SlotPos      = CAJsonObject->GetIntegerField(TEXT("SlotPos"));
+					CA.LegSize      = CAJsonObject->GetNumberField(TEXT("LegSize"));
+					CA.WaistSize    = CAJsonObject->GetNumberField(TEXT("WaistSize"));
+					CA.ArmSize      = CAJsonObject->GetNumberField(TEXT("ArmSize"));
 					//...
 				}
 			}
@@ -105,6 +111,9 @@ namespace NetDataParser
 		JsonWriter->WriteValue(TEXT("CreationDate"), InCA.CreationDate);
 		JsonWriter->WriteValue(TEXT("Lv"), InCA.Lv);
 		JsonWriter->WriteValue(TEXT("SlotPos"), InCA.SlotPos);
+		JsonWriter->WriteValue(TEXT("LegSize"), InCA.LegSize);
+		JsonWriter->WriteValue(TEXT("WaistSize"), InCA.WaistSize);
+		JsonWriter->WriteValue(TEXT("ArmSize"), InCA.ArmSize);
 		//...
 
 		JsonWriter->WriteObjectEnd();
@@ -123,8 +132,22 @@ namespace NetDataParser
 			OutCA.CreationDate = ReadRoot->GetStringField(TEXT("CreationDate"));
 			OutCA.Lv           = ReadRoot->GetIntegerField(TEXT("Lv"));
 			OutCA.SlotPos      = ReadRoot->GetIntegerField(TEXT("SlotPos"));
+			OutCA.LegSize      = ReadRoot->GetNumberField(TEXT("LegSize"));
+			OutCA.WaistSize    = ReadRoot->GetNumberField(TEXT("WaistSize"));
+			OutCA.ArmSize      = ReadRoot->GetNumberField(TEXT("ArmSize"));
 			//...
 		}
 	}
 
+}
+
+void FMMOARPGCharacterAppearance::Reset()
+{
+	Lv = INDEX_NONE;
+	SlotPos = INDEX_NONE;
+	LegSize = 0.f;
+	WaistSize = 0.f;
+	ArmSize = 0.f;
+	Name.Empty();
+	CreationDate.Empty();
 }
