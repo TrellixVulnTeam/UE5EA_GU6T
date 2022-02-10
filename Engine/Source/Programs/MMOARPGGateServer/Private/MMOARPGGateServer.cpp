@@ -10,6 +10,7 @@
 
 #include "GateServer/MMOARPGGateServerObject.h"
 #include "GateServer/MMOARPGDbClientObject.h"
+#include "GateServer/MMOARPGCenterClientObject.h"
 #include "Log/MMOARPGGateServerLog.h"
 #include "ServerList.h"
 
@@ -24,12 +25,14 @@ INT32_MAIN_INT32_ARGC_TCHAR_ARGV()
 	FSimpleNetGlobalInfo::Get()->Init();
 
 	// Create Gate Server Instance
-	GateServer = FSimpleNetManage::CreateManage(ESimpleNetLinkState::LINKSTATE_LISTEN, ESimpleSocketType::SIMPLESOCKETTYPE_TCP);
-	DbClient   = FSimpleNetManage::CreateManage(ESimpleNetLinkState::LINKSTATE_CONNET, ESimpleSocketType::SIMPLESOCKETTYPE_TCP);
+	GateServer   = FSimpleNetManage::CreateManage(ESimpleNetLinkState::LINKSTATE_LISTEN, ESimpleSocketType::SIMPLESOCKETTYPE_TCP);
+	DbClient     = FSimpleNetManage::CreateManage(ESimpleNetLinkState::LINKSTATE_CONNET, ESimpleSocketType::SIMPLESOCKETTYPE_TCP);
+	CenterClient = FSimpleNetManage::CreateManage(ESimpleNetLinkState::LINKSTATE_CONNET, ESimpleSocketType::SIMPLESOCKETTYPE_TCP);
 	 
 	// Global Register Reflect Class
-	GateServer->NetworkObjectClass = UMMOARPGGateServerObject::StaticClass();
-	DbClient->NetworkObjectClass   = UMMOARPGDbClientObject::StaticClass();
+	GateServer->NetworkObjectClass   = UMMOARPGGateServerObject::StaticClass();
+	DbClient->NetworkObjectClass     = UMMOARPGDbClientObject::StaticClass();
+	CenterClient->NetworkObjectClass = UMMOARPGCenterClientObject::StaticClass();
 
 	// Init Servers
 	UE_LOG(LogMMOARPGGateServer, Display, TEXT("MMO Gate Server Initing..."));
@@ -39,11 +42,18 @@ INT32_MAIN_INT32_ARGC_TCHAR_ARGV()
 		UE_LOG(LogMMOARPGGateServer, Error, TEXT("MMO Gate Server Init failed!"));
 		return INDEX_NONE;
 	}
-	UE_LOG(LogMMOARPGGateServer, Display, TEXT("MMO Gate Server Initing..."));
+	UE_LOG(LogMMOARPGGateServer, Display, TEXT("MMO DB Client Initing..."));
 	if (!DbClient->Init(11221))
 	{
 		delete DbClient;
 		UE_LOG(LogMMOARPGGateServer, Error, TEXT("MMO Db Client Init failed!"));
+		return INDEX_NONE;
+	}
+	UE_LOG(LogMMOARPGGateServer, Display, TEXT("MMO Center Client Initing..."));
+	if (!CenterClient->Init(11231))
+	{
+		delete CenterClient;
+		UE_LOG(LogMMOARPGGateServer, Error, TEXT("MMO Center Client Init failed!"));
 		return INDEX_NONE;
 	}
 
@@ -59,6 +69,7 @@ INT32_MAIN_INT32_ARGC_TCHAR_ARGV()
 
 		GateServer->Tick(DeltaS);
 		DbClient->Tick(DeltaS);
+		CenterClient->Tick(DeltaS);
 
 		LastTime = CurrentTime;
 	}
@@ -66,6 +77,7 @@ INT32_MAIN_INT32_ARGC_TCHAR_ARGV()
 	UE_LOG(LogMMOARPGGateServer, Display, TEXT("MMO Gate Server Destroying..."));
 	FSimpleNetManage::Destroy(GateServer);
 	FSimpleNetManage::Destroy(DbClient);
+	FSimpleNetManage::Destroy(CenterClient);
 
 	FEngineLoop::AppExit();
 	return 0;

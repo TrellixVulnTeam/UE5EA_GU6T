@@ -1,6 +1,9 @@
-echo WScript.sleep 500 >sss.vbs
+echo WScript.sleep 1000 >sss.vbs
 
 start DbServerLauncher.bat
+sss.vbs
+
+start CenterServerLauncher.bat
 sss.vbs
 
 start GateServerLauncher.bat
