@@ -80,7 +80,7 @@ void UMMOARPGGateServerObject::RecvProtocol(uint32 InProtocol)
 		}
 		case SP_CreateCharacterRequests:
 		{
-			// Get User ID
+			// Get User ID & CA
 			int32 UserID = INDEX_NONE;
 			FString CAJson;
 			SIMPLE_PROTOCOLS_RECEIVE(SP_CreateCharacterRequests, UserID, CAJson);
@@ -97,7 +97,24 @@ void UMMOARPGGateServerObject::RecvProtocol(uint32 InProtocol)
 
 			break;
 		}
-		default:
+		case SP_LoginToDSServerRequests:
+		{
+			// Get User ID & SlotPos
+			int32 UserID = INDEX_NONE;
+			int32 SlotPos = INDEX_NONE;
+			SIMPLE_PROTOCOLS_RECEIVE(SP_LoginToDSServerRequests, UserID, SlotPos);
+
+			// Get current Gate Server address
+			FSimpleAddrInfo AddrInfo;
+			GetRemoteAddrInfo(AddrInfo);
+
+			// Forward NetFlow to Center Server
+			SIMPLE_CLIENT_SEND(CenterClient, SP_CreateCharacterRequests, UserID, SlotPos, AddrInfo);
+
+			UE_LOG(LogMMOARPGGateServer, Display, TEXT("[SP_LoginToDSServerRequests] Gate Server Recived: user id=%i, slot pos=%i"),
+				UserID, SlotPos);
+
 			break;
+		}
 	}
 }

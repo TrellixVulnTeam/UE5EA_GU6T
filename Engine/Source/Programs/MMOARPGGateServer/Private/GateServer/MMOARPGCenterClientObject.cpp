@@ -3,6 +3,11 @@
 #include "Log/MMOARPGGateServerLog.h"
 #include "ServerList.h"
 
+// Plugins
+#include "Protocol/RoleHallProtocol.h" // Plugin: MMOARPGComm
+#include "Protocol/GameProtocol.h" // Plugin: MMOARPGComm
+#include "MMOARPGCommType.h" // Plugin: MMOARPGComm
+
 void UMMOARPGCenterClientObject::Init()
 {
 	Super::Init();
@@ -22,8 +27,22 @@ void UMMOARPGCenterClientObject::RecvProtocol(uint32 InProtocol)
 {
 	Super::RecvProtocol(InProtocol);
 
-	/*switch (InProtocol)
+	switch (InProtocol)
 	{
+		case SP_LoginToDSServerResponses:
+		{
+			// Get Response Msg
+			FSimpleAddrInfo AddrInfo;
+			FSimpleAddr DSServerAddr;
+			SIMPLE_PROTOCOLS_RECEIVE(SP_LoginToDSServerResponses, AddrInfo, DSServerAddr);
 
-	}*/
+			UE_LOG(LogMMOARPGGateServer, Display, TEXT("[SP_LoginToDSServerResponses] DB Client Recived: DS ip = %i, DS port = %i"),
+				DSServerAddr.IP, DSServerAddr.Port);
+
+			// Forward NetFlow to User Client by Gate Server
+			SIMPLE_SERVER_SEND(GateServer, SP_LoginToDSServerResponses, AddrInfo, DSServerAddr);
+
+			break;
+		}
+	}
 }
