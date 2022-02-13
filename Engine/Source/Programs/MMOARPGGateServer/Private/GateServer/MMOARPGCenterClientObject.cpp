@@ -33,15 +33,15 @@ void UMMOARPGCenterClientObject::RecvProtocol(uint32 InProtocol)
 		case SP_LoginToDSServerResponses:
 		{
 			// Get Response Msg
-			FSimpleAddrInfo AddrInfo;
-			FSimpleAddr DSServerAddr;
-			SIMPLE_PROTOCOLS_RECEIVE(SP_LoginToDSServerResponses, AddrInfo, DSServerAddr);
+			FSimpleAddrInfo GateAddrInfo;
+			FSimpleAddr DSAddrInfo;
+			SIMPLE_PROTOCOLS_RECEIVE(SP_LoginToDSServerResponses, GateAddrInfo, DSAddrInfo);
 
-			UE_LOG(LogMMOARPGGateServer, Display, TEXT("[SP_LoginToDSServerResponses] DB Client Recived: DS ip = %i, DS port = %i"),
-				DSServerAddr.IP, DSServerAddr.Port);
+			UE_LOG(LogMMOARPGGateServer, Display, TEXT("[LoginToDSServerResponses] DB Client Recived: DS ip = %i, DS port = %i"),
+				DSAddrInfo.IP, DSAddrInfo.Port);
 
 			// Forward NetFlow to User Client by Gate Server
-			SIMPLE_SERVER_SEND(GateServer, SP_LoginToDSServerResponses, AddrInfo, DSServerAddr);
+			SIMPLE_SERVER_SEND(GateServer, SP_LoginToDSServerResponses, GateAddrInfo, DSAddrInfo);
 
 			break;
 		}

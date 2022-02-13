@@ -39,7 +39,7 @@ void UMMOARPGGateServerObject::RecvProtocol(uint32 InProtocol)
 			// Send back Status to Login Server
 			SIMPLE_PROTOCOLS_SEND(SP_GateStatusResponses, ServerStatus);
 
-			UE_LOG(LogMMOARPGGateServer, Display, TEXT("[SP_GateStatusResponses] Gate Server sended."));
+			UE_LOG(LogMMOARPGGateServer, Display, TEXT("[GateStatusResponses] Gate Server sended."));
 			break;
 		}
 		case SP_CharacterAppearancesRequests:
@@ -47,7 +47,7 @@ void UMMOARPGGateServerObject::RecvProtocol(uint32 InProtocol)
 			// Get User ID
 			int32 UserID = INDEX_NONE;
 			SIMPLE_PROTOCOLS_RECEIVE(SP_CharacterAppearancesRequests, UserID);
-			UE_LOG(LogMMOARPGGateServer, Display, TEXT("[SP_CharacterAppearancesRequests] Gate Server Recived: user id=%i"),
+			UE_LOG(LogMMOARPGGateServer, Display, TEXT("[CharacterAppearancesRequests] Gate Server Recived: user id=%i"),
 				UserID);
 
 			// Get current Gate Server address
@@ -73,7 +73,7 @@ void UMMOARPGGateServerObject::RecvProtocol(uint32 InProtocol)
 			// Forward NetFlow to DB Server by DB Client
 			SIMPLE_CLIENT_SEND(DbClient, SP_CheckCharacterNameRequests, UserID, CharacterName, AddrInfo);
 
-			UE_LOG(LogMMOARPGGateServer, Display, TEXT("[SP_CheckCharacterNameRequests] Gate Server Recived: user id=%i, name=%s"),
+			UE_LOG(LogMMOARPGGateServer, Display, TEXT("[CheckCharacterNameRequests] Gate Server Recived: user id=%i, name=%s"),
 				UserID, *CharacterName);
 
 			break;
@@ -92,7 +92,7 @@ void UMMOARPGGateServerObject::RecvProtocol(uint32 InProtocol)
 			// Forward NetFlow to DB Server by DB Client
 			SIMPLE_CLIENT_SEND(DbClient, SP_CreateCharacterRequests, UserID, CAJson, AddrInfo);
 
-			UE_LOG(LogMMOARPGGateServer, Display, TEXT("[SP_CreateCharacterRequests] Gate Server Recived: user id=%i, ca_json=%s"),
+			UE_LOG(LogMMOARPGGateServer, Display, TEXT("[CreateCharacterRequests] Gate Server Recived: user id=%i, ca_json=%s"),
 				UserID, *CAJson);
 
 			break;
@@ -109,9 +109,9 @@ void UMMOARPGGateServerObject::RecvProtocol(uint32 InProtocol)
 			GetRemoteAddrInfo(AddrInfo);
 
 			// Forward NetFlow to Center Server
-			SIMPLE_CLIENT_SEND(CenterClient, SP_CreateCharacterRequests, UserID, SlotPos, AddrInfo);
+			SIMPLE_CLIENT_SEND(CenterClient, SP_LoginToDSServerRequests, UserID, SlotPos, AddrInfo);
 
-			UE_LOG(LogMMOARPGGateServer, Display, TEXT("[SP_LoginToDSServerRequests] Gate Server Recived: user id=%i, slot pos=%i"),
+			UE_LOG(LogMMOARPGGateServer, Display, TEXT("[LoginToDSServerRequests] Gate Server Recived: user id=%i, slot pos=%i"),
 				UserID, SlotPos);
 
 			break;

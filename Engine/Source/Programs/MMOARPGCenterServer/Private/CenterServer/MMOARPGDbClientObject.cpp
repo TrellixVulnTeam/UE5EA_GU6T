@@ -5,7 +5,9 @@
 #include "MMOARPGCenterServerObject.h"
 
 // Plugins
+#include "SimpleProtocolsDefinition.h"
 #include "Protocol/ServerProtocol.h" // Plugin: MMOARPGComm
+#include "Protocol/RoleHallProtocol.h" // Plugin: MMOARPGComm
 #include "MMOARPGCommType.h" // Plugin: MMOARPGComm
 
 void UMMOARPGDbClientObject::Init()
@@ -37,7 +39,7 @@ void UMMOARPGDbClientObject::RecvProtocol(uint32 InProtocol)
 			FSimpleAddrInfo CenterAddrInfo;
 			SIMPLE_PROTOCOLS_RECEIVE(SP_PlayerRegisterInfoResponses, UserDataJson, CAJson, GateAddrInfo, CenterAddrInfo);
 
-			UE_LOG(LogMMOARPGCenterServer, Display, TEXT("[LoginToDSServerRequests] DB Client Reviced: user_data=%s, ca=%s"),
+			UE_LOG(LogMMOARPGCenterServer, Display, TEXT("[PlayerRegisterInfoResponses] DB Client Reviced: user_data=%s, ca=%s"),
 				*UserDataJson, *CAJson);
 
 			// Register player's Character Info into Online List
@@ -55,10 +57,10 @@ void UMMOARPGDbClientObject::RecvProtocol(uint32 InProtocol)
 			}
 		
 			// TODO: Get DS Server info where Character is exist
+			FSimpleAddr DSServerAddrInfo = FSimpleNetManage::GetSimpleAddr(TEXT("127.0.0.1"), 7777); // TODO
 
-			// Send Response
-			//FSimpleAddr DSServerAddr;
-			//SIMPLE_PROTOCOLS_SEND(SP_LoginToDSServerResponses, GateAddrInfo, DSServerAddr);
+			// Send Response by Center Server
+			SIMPLE_SERVER_SEND(CenterServer, SP_LoginToDSServerResponses, CenterAddrInfo, GateAddrInfo, DSServerAddrInfo);
 
 			break;
 		}
