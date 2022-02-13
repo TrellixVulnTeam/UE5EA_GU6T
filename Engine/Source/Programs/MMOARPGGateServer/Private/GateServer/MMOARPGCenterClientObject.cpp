@@ -4,6 +4,7 @@
 #include "ServerList.h"
 
 // Plugins
+#include "SimpleProtocolsDefinition.h"
 #include "Protocol/RoleHallProtocol.h" // Plugin: MMOARPGComm
 #include "Protocol/GameProtocol.h" // Plugin: MMOARPGComm
 #include "MMOARPGCommType.h" // Plugin: MMOARPGComm

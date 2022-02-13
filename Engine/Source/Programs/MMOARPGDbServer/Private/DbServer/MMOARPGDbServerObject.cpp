@@ -5,6 +5,7 @@
 #include "Global/SimpleNetGlobalInfo.h" // Plugin: SimpleNetChannel
 #include "Protocol/LoginProtocol.h" // Plugin: MMOARPGComm
 #include "Protocol/RoleHallProtocol.h" // Plugin: MMOARPGComm
+#include "Protocol/ServerProtocol.h" // Plugin: MMOARPGComm
 #include "MMOARPGCommType.h" // Plugin: MMOARPGComm
 
 #include "MySQLConfig.h"
@@ -157,35 +158,9 @@ void UMMOARPGDbServerObject::RecvProtocol(uint32 InProtocol)
 				/* Step1: Get Character IDs metadata */
 				FString CAIDsString;
 
-				FString GetSlotsSQL = FString::Printf(TEXT("SELECT meta_value FROM wp_usermeta WHERE user_id = %i and meta_key = 'character_ca_id';"), UserID);
-				TArray<FSimpleMysqlResult> GetSlotsResults;
-				if (Get(GetSlotsSQL, GetSlotsResults))
-				{
-					// get character slots
-					if (GetSlotsResults.Num() > 0)
-					{
-						for (auto& GetSlotsResult : GetSlotsResults)
-						{
-							if (FString* SlotsString = GetSlotsResult.Rows.Find(TEXT("meta_value")))
-							{
-								TArray<FString> CAIDs;
-								SlotsString->ParseIntoArray(CAIDs, TEXT("|"));
-								for (auto& CAID : CAIDs)
-								{
-									CAIDsString += CAID + TEXT(",");
-								}
-								CAIDsString.RemoveFromEnd(TEXT(","));
-							}
-						}
-					}
-					// this user haven't create any character
-					else
-					{
-					}
-				}
-				else
-				{
-				}
+				TArray<FString> CAIDs;
+				if (GetCAIDs(UserID, CAIDs))
+					GetSerialTArray(TEXT(","), CAIDs, CAIDsString);
 
 				/* Step2: Get Character Appearances by IDs */
 				FMMOARPGCharacterAppearances CharacterAppearances;
@@ -256,7 +231,7 @@ void UMMOARPGDbServerObject::RecvProtocol(uint32 InProtocol)
 			FSimpleAddrInfo AddrInfo;
 			SIMPLE_PROTOCOLS_RECEIVE(SP_CheckCharacterNameRequests, UserID, CharacterName, AddrInfo);
 
-			UE_LOG(LogMMOARPGDbServer, Display, TEXT("[SP_CheckCharacterNameRequests] DB Server Recived: user id=%i, name=%s"),
+			UE_LOG(LogMMOARPGDbServer, Display, TEXT("[CheckCharacterNameRequests] DB Server Recived: user id=%i, name=%s"),
 				UserID, *CharacterName);
 
 			ECheckNameType ResponseType = ECheckNameType::UNKNOW_ERROR;
@@ -277,7 +252,7 @@ void UMMOARPGDbServerObject::RecvProtocol(uint32 InProtocol)
 			FSimpleAddrInfo AddrInfo;
 			SIMPLE_PROTOCOLS_RECEIVE(SP_CreateCharacterRequests, UserID, CAJson, AddrInfo);
 
-			UE_LOG(LogMMOARPGDbServer, Display, TEXT("[SP_CreateCharacterRequests] DB Server Recived: user id=%i, ca_json=%s"),
+			UE_LOG(LogMMOARPGDbServer, Display, TEXT("[CreateCharacterRequests] DB Server Recived: user id=%i, ca_json=%s"),
 				UserID, *CAJson);
 
 			if (UserID != INDEX_NONE)
@@ -300,22 +275,22 @@ void UMMOARPGDbServerObject::RecvProtocol(uint32 InProtocol)
 						/* Step1: Get Character IDs metadata */
 						TArray<FString> CAIDs;
 
-						FString GetSlotsSQL = FString::Printf(TEXT("SELECT meta_value FROM wp_usermeta WHERE user_id = %i and meta_key = 'character_ca_id';"), UserID);
-						UE_LOG(LogMMOARPGDbServer, Display, TEXT("[SP_CreateCharacterRequests] excute Get CA ID SQL: %s"),
-							*GetSlotsSQL);
+						FString GetCAIDSQL = FString::Printf(TEXT("SELECT meta_value FROM wp_usermeta WHERE user_id = %i and meta_key = 'character_ca_id';"), UserID);
+						UE_LOG(LogMMOARPGDbServer, Display, TEXT("[CreateCharacterRequests] excute Get CA ID SQL: %s"),
+							*GetCAIDSQL);
 
-						TArray<FSimpleMysqlResult> GetSlotsResults;
-						if (Get(GetSlotsSQL, GetSlotsResults))
+						TArray<FSimpleMysqlResult> GetCAIDResults;
+						if (Get(GetCAIDSQL, GetCAIDResults))
 						{
-							UE_LOG(LogMMOARPGDbServer, Display, TEXT("[SP_CreateCharacterRequests] Get CA ID SQL success."));
+							UE_LOG(LogMMOARPGDbServer, Display, TEXT("[CreateCharacterRequests] Get CA ID SQL success."));
 							// get character slots
-							if (GetSlotsResults.Num() > 0)
+							if (GetCAIDResults.Num() > 0)
 							{
-								for (auto& GetSlotsResult : GetSlotsResults)
+								for (auto& GetCAIDResult : GetCAIDResults)
 								{
-									if (FString* SlotsString = GetSlotsResult.Rows.Find(TEXT("meta_value")))
+									if (FString* CAIDsString = GetCAIDResult.Rows.Find(TEXT("meta_value")))
 									{
-										SlotsString->ParseIntoArray(CAIDs, TEXT("|"));
+										CAIDsString->ParseIntoArray(CAIDs, TEXT("|"));
 									}
 								}
 
@@ -337,12 +312,12 @@ void UMMOARPGDbServerObject::RecvProtocol(uint32 InProtocol)
 						{
 							FString InsertCASQL = FString::Printf(TEXT("INSERT INTO mmoarpg_characters_ca (mmoarpg_name, mmoarpg_date, mmoarpg_slot, leg_size, waist_size, arm_size) VALUES('%s', '%s', %i, %.2lf, %.2lf, %.2lf);"),
 								*CA.Name, *CA.CreationDate, CA.SlotPos, CA.LegSize, CA.WaistSize, CA.ArmSize);
-							UE_LOG(LogMMOARPGDbServer, Display, TEXT("[SP_CreateCharacterRequests] excute Insert CA SQL: %s"),
+							UE_LOG(LogMMOARPGDbServer, Display, TEXT("[CreateCharacterRequests] excute Insert CA SQL: %s"),
 								*InsertCASQL);
 
 							if (Post(InsertCASQL))
 							{
-								UE_LOG(LogMMOARPGDbServer, Display, TEXT("[SP_CreateCharacterRequests] Insert CA SQL success."));
+								UE_LOG(LogMMOARPGDbServer, Display, TEXT("[CreateCharacterRequests] Insert CA SQL success."));
 								FString GetCaIdSQL = FString::Printf(TEXT("SELECT id FROM mmoarpg_characters_ca WHERE mmoarpg_name = '%s';"), *CA.Name);
 
 								TArray<FSimpleMysqlResult> GetCaIdResults;
@@ -397,7 +372,7 @@ void UMMOARPGDbServerObject::RecvProtocol(uint32 InProtocol)
 								UpdateMetaSQL = FString::Printf(TEXT("INSERT INTO wp_usermeta (user_id, meta_key, meta_value) VALUES(%i, 'character_ca_id', '%s');"),
 									UserID, *NewCAIDsString);
 							}
-							UE_LOG(LogMMOARPGDbServer, Display, TEXT("[SP_CreateCharacterRequests] excute Update Metadata SQL: %s"),
+							UE_LOG(LogMMOARPGDbServer, Display, TEXT("[CreateCharacterRequests] excute Update Metadata SQL: %s"),
 								*UpdateMetaSQL);
 
 							if (!Post(UpdateMetaSQL))
@@ -406,12 +381,12 @@ void UMMOARPGDbServerObject::RecvProtocol(uint32 InProtocol)
 							}
 							else
 							{
-								UE_LOG(LogMMOARPGDbServer, Display, TEXT("[SP_CreateCharacterRequests] Update Metadata SQL success."));
+								UE_LOG(LogMMOARPGDbServer, Display, TEXT("[CreateCharacterRequests] Update Metadata SQL success."));
 							}
 						}
 					}
 					
-					UE_LOG(LogMMOARPGDbServer, Display, TEXT("[SP_CreateCharacterRequests] Sending back rst. Done."));
+					UE_LOG(LogMMOARPGDbServer, Display, TEXT("[CreateCharacterRequests] Sending back rst. Done."));
 					SIMPLE_PROTOCOLS_SEND(SP_CreateCharacterResponses, CheckNameType, bCreateCharacter, CAJson, AddrInfo);
 				}
 
@@ -419,6 +394,36 @@ void UMMOARPGDbServerObject::RecvProtocol(uint32 InProtocol)
 
 			break;
 		}
+		case SP_PlayerRegisterInfoRequests:
+		{
+			int32 UserID = INDEX_NONE;
+			int32 SlotPos = INDEX_NONE;
+			FSimpleAddrInfo GateAddrInfo;
+			FSimpleAddrInfo CenterAddrInfo;
+			SIMPLE_PROTOCOLS_RECEIVE(SP_CreateCharacterRequests, UserID, SlotPos, GateAddrInfo, CenterAddrInfo);
+
+			UE_LOG(LogMMOARPGDbServer, Display, TEXT("[PlayerRegisterInfoRequests] DB Server Recived: user id=%i, slot pos=%i"),
+				UserID, SlotPos);
+
+			if (UserID != INDEX_NONE && SlotPos != INDEX_NONE)
+			{
+				// Get User Data & CA
+				FString UserDataJson;
+				FString CAJson;
+				if (GetUserData(UserID, UserDataJson) && GetCAwithSlot(UserID, SlotPos, CAJson))
+				{
+					SIMPLE_PROTOCOLS_SEND(SP_PlayerRegisterInfoResponses, UserDataJson, CAJson, GateAddrInfo, CenterAddrInfo);
+				}
+				else
+				{
+					UserDataJson = TEXT("{}");
+					CAJson = TEXT("{}");
+
+					SIMPLE_PROTOCOLS_SEND(SP_PlayerRegisterInfoResponses, UserDataJson, CAJson, GateAddrInfo, CenterAddrInfo);
+				}
+			}
+		}
+
 	}
 }
 
@@ -470,43 +475,16 @@ void UMMOARPGDbServerObject::CheckPasswordVerifyResult(const FSimpleHttpRequest&
 				// Password Verification is Success
 				if (UserID != 0)
 				{
-					FMMOARPGUserData UserData;
-					UserData.ID = UserID;
-
-					FString SQL = FString::Printf(TEXT("SELECT user_login, user_email, user_url, display_name FROM wp_users WHERE ID=%i;"), UserID);
-					TArray<FSimpleMysqlResult> Results;
-					if (Get(SQL, Results))
+					if (GetUserData(UserID, UserDataJson))
 					{
-						if (Results.Num() > 0)
-						{
-							for (auto& Result : Results)
-							{
-								if (FString* UserLogin = Result.Rows.Find(TEXT("user_login")))
-								{
-									UserData.Account = *UserLogin;
-								}
-								if (FString* UserEmail = Result.Rows.Find(TEXT("user_email")))
-								{
-									UserData.Email = *UserEmail;
-								}
-								//if (FString* UserUrl = Result.Rows.Find(TEXT("user_url")))
-								//{
-								//	UserData.Url = UserUrl
-								//}
-								if (FString* UserDisplayName = Result.Rows.Find(TEXT("display_name")))
-								{
-									UserData.NickName = *UserDisplayName;
-								}
-								// TODO: AvatarURL
-							}
-						}
+						ELoginType ResponseType = ELoginType::LOGIN_SUCCESS;
+						SIMPLE_PROTOCOLS_SEND(SP_LoginResponses, AddrInfo, ResponseType, UserDataJson);
 					}
-
-					// serialize UserData to Json
-					NetDataParser::UserDataToJson(UserData, UserDataJson);
-
-					ELoginType ResponseType = ELoginType::LOGIN_SUCCESS;
-					SIMPLE_PROTOCOLS_SEND(SP_LoginResponses, AddrInfo, ResponseType, UserDataJson);
+					else
+					{
+						ELoginType ResponseType = ELoginType::DB_ERROR;
+						SIMPLE_PROTOCOLS_SEND(SP_LoginResponses, AddrInfo, ResponseType, UserDataJson);
+					}
 				}
 			}
 			else
@@ -550,6 +528,140 @@ ECheckNameType UMMOARPGDbServerObject::CheckName(FString& InCharacterName)
 	}
 
 	return ResponseType;
+}
+
+void UMMOARPGDbServerObject::GetSerialTArray(TCHAR* InPrefix, const TArray<FString>& InTArray, FString& OutString)
+{
+	for (auto& Element : InTArray)
+	{
+		OutString += Element + InPrefix;
+	}
+	OutString.RemoveFromEnd(InPrefix);
+}
+
+bool UMMOARPGDbServerObject::GetUserData(int32 InUserID, FString& OutJson)
+{
+	FMMOARPGUserData UserData;
+	UserData.ID = InUserID;
+
+	FString SQL = FString::Printf(TEXT("SELECT user_login, user_email, user_url, display_name FROM wp_users WHERE ID=%i;"), InUserID);
+	TArray<FSimpleMysqlResult> Results;
+	if (Get(SQL, Results))
+	{
+		if (Results.Num() > 0)
+		{
+			for (auto& Result : Results)
+			{
+				if (FString* UserLogin = Result.Rows.Find(TEXT("user_login")))
+				{
+					UserData.Account = *UserLogin;
+				}
+				if (FString* UserEmail = Result.Rows.Find(TEXT("user_email")))
+				{
+					UserData.Email = *UserEmail;
+				}
+				//if (FString* UserUrl = Result.Rows.Find(TEXT("user_url")))
+				//{
+				//	UserData.Url = UserUrl
+				//}
+				if (FString* UserDisplayName = Result.Rows.Find(TEXT("display_name")))
+				{
+					UserData.NickName = *UserDisplayName;
+				}
+				// TODO: AvatarURL
+			}
+		}
+	}
+
+	// serialize UserData to Json
+	NetDataParser::UserDataToJson(UserData, OutJson);
+
+	return OutJson.Len() > 0;
+}
+
+bool UMMOARPGDbServerObject::GetCAwithSlot(int32 InUserID, int32 InSlotPos, FString& OutJson)
+{
+	/* Step1: Get Character IDs metadata */
+	TArray<FString> CAIDs;
+
+	if (GetCAIDs(InUserID, CAIDs))
+	{
+		FString CAIDsString;
+		GetSerialTArray(TEXT(","), CAIDs, CAIDsString);
+
+		/* Step2: Get Character Appearances by IDs */
+		FString GetCASQL = FString::Printf(TEXT("SELECT * FROM mmoarpg_characters_ca WHERE id IN (%s) and mmoarpg_slot=%i;"),
+			*CAIDsString, InSlotPos);
+		TArray<FSimpleMysqlResult> GetCASQLResults;
+		if (Get(GetCASQL, GetCASQLResults))
+		{
+			// get character appearances
+			if (GetCASQLResults.Num() > 0)
+			{
+				FMMOARPGCharacterAppearance CA;
+
+				for (auto& GetCASQLResult : GetCASQLResults)
+				{
+					if (FString* Name = GetCASQLResult.Rows.Find(TEXT("mmoarpg_name")))
+					{
+						CA.Name = *Name;
+					}
+					if (FString* Date = GetCASQLResult.Rows.Find(TEXT("mmoarpg_date")))
+					{
+						CA.CreationDate = *Date;
+					}
+					if (FString* Slot = GetCASQLResult.Rows.Find(TEXT("mmoarpg_slot")))
+					{
+						CA.SlotPos = FCString::Atoi(**Slot);
+					}
+					if (FString* LegSize = GetCASQLResult.Rows.Find(TEXT("leg_size")))
+					{
+						CA.LegSize = FCString::Atof(**LegSize);
+					}
+					if (FString* WaistSize = GetCASQLResult.Rows.Find(TEXT("waist_size")))
+					{
+						CA.WaistSize = FCString::Atof(**WaistSize);
+					}
+					if (FString* ArmSize = GetCASQLResult.Rows.Find(TEXT("arm_size")))
+					{
+						CA.ArmSize = FCString::Atof(**ArmSize);
+					}
+
+					NetDataParser::CharacterAppearanceToJson(CA, OutJson);
+
+					return !OutJson.IsEmpty();
+				}
+			}
+		}
+	}
+
+	return false;
+}
+
+bool UMMOARPGDbServerObject::GetCAIDs(int32 InUserID, TArray<FString>& OutCAIDs)
+{
+	FString GetCAIDsSQL = FString::Printf(TEXT("SELECT meta_value FROM wp_usermeta WHERE user_id = %i and meta_key = 'character_ca_id';"), InUserID);
+
+	TArray<FSimpleMysqlResult> GetCAIDsResults;
+	if (Get(GetCAIDsSQL, GetCAIDsResults))
+	{
+		// get character slots
+		if (GetCAIDsResults.Num() > 0)
+		{
+			for (auto& GetCAIDsResult : GetCAIDsResults)
+			{
+				if (FString* CAIDsString = GetCAIDsResult.Rows.Find(TEXT("meta_value")))
+				{
+					CAIDsString->ParseIntoArray(OutCAIDs, TEXT("|"));
+				}
+			}
+		}
+
+		return true;
+	}
+
+	//return OutCAIDs.Num() > 0;
+	return false;
 }
 
 bool UMMOARPGDbServerObject::Post(const FString& InSQL)

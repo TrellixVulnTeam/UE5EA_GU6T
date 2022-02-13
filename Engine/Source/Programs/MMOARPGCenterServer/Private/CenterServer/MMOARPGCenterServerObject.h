@@ -4,6 +4,7 @@
 
 // Plugins
 #include "UObject/SimpleController.h"
+#include "MMOARPGCommType.h" // Plugin: MMOARPGComm
 
 #include "MMOARPGCenterServerObject.generated.h"
 
@@ -19,4 +20,9 @@ public:
 	virtual void Tick(float DeltaTime);
 	virtual void Close();
 	virtual void RecvProtocol(uint32 InProtocol);
+
+	void AddRegisterInfo(const FMMOARPGPlayerRegisterInfo& InRegisterInfo);
+
+private:
+	TMap<int32, FMMOARPGPlayerRegisterInfo> PlayerRegisterInfos;
 };

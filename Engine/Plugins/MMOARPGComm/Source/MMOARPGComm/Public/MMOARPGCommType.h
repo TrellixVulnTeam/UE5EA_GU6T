@@ -26,6 +26,8 @@ struct MMOARPGCOMM_API FMMOARPGUserData
 		:ID(INDEX_NONE)
 	{}
 
+	void Reset();
+
 	int32 ID;
 	FString Account;
 	FString Email;
@@ -66,6 +68,15 @@ struct MMOARPGCOMM_API FMMOARPGCharacterAppearance
 };
 
 typedef TArray<FMMOARPGCharacterAppearance> FMMOARPGCharacterAppearances;
+
+struct MMOARPGCOMM_API FMMOARPGPlayerRegisterInfo
+{
+	void Reset();
+	bool IsValid() const;
+
+	FMMOARPGUserData UserData;
+	FMMOARPGCharacterAppearance CA;
+};
 
 // String(Json) <-> FMMOARPGUserData
 namespace NetDataParser
