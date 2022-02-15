@@ -52,8 +52,13 @@ void UMMOARPGDbClientObject::RecvProtocol(uint32 InProtocol)
 					NetDataParser::JsonToUserdata(UserDataJson, PlayerRegisterInfo.UserData);
 
 					CenterServerObj->AddRegisterInfo(PlayerRegisterInfo);
+					UE_LOG(LogMMOARPGCenterServer, Display, TEXT("[INFO][PlayerRegister] register user successfully. User ID = %i"),
+						PlayerRegisterInfo.UserData.ID);
 				}
-				
+				else
+				{
+					UE_LOG(LogMMOARPGCenterServer, Display, TEXT("[ERROR][PlayerRegister] register user failed."));
+				}
 			}
 		
 			// TODO: Get DS Server info where Character is exist

@@ -22,6 +22,7 @@ public:
 	virtual void RecvProtocol(uint32 InProtocol);
 
 	void AddRegisterInfo(const FMMOARPGPlayerRegisterInfo& InRegisterInfo);
+	bool RemoveRegisterInfo(const int32 InUserID);
 
 private:
 	TMap<int32, FMMOARPGPlayerRegisterInfo> PlayerRegisterInfos;

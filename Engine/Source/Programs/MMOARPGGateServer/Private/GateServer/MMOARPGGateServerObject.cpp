@@ -7,6 +7,11 @@
 #include "Protocol/RoleHallProtocol.h" // Plugin: MMOARPGComm
 #include "MMOARPGCommType.h" // Plugin: MMOARPGComm
 
+UMMOARPGGateServerObject::UMMOARPGGateServerObject()
+	: m_UserID(INDEX_NONE)
+{
+}
+
 void UMMOARPGGateServerObject::Init()
 {
 	Super::Init();
@@ -20,6 +25,16 @@ void UMMOARPGGateServerObject::Tick(float DeltaTime)
 void UMMOARPGGateServerObject::Close()
 {
 	Super::Close();
+
+	if (m_UserID != INDEX_NONE)
+	{
+		UE_LOG(LogMMOARPGGateServer, Display, TEXT("[INFO][PlayerQuit] Player connection is off. Send PlayerQuit Requests. User ID = %i"), m_UserID);
+		SIMPLE_CLIENT_SEND(CenterClient, SP_PlayerQuitRequests, m_UserID);
+	}
+	else
+	{
+		UE_LOG(LogMMOARPGGateServer, Display, TEXT("[ERROR][PlayerQuit] Player connection is off, but find User ID is NONE."));
+	}
 }
 
 void UMMOARPGGateServerObject::RecvProtocol(uint32 InProtocol)
@@ -49,6 +64,9 @@ void UMMOARPGGateServerObject::RecvProtocol(uint32 InProtocol)
 			SIMPLE_PROTOCOLS_RECEIVE(SP_CharacterAppearancesRequests, UserID);
 			UE_LOG(LogMMOARPGGateServer, Display, TEXT("[CharacterAppearancesRequests] Gate Server Recived: user id=%i"),
 				UserID);
+
+			// Register User ID
+			m_UserID = UserID;
 
 			// Get current Gate Server address
 			FSimpleAddrInfo AddrInfo;

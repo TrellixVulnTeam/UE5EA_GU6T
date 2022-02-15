@@ -56,6 +56,27 @@ void UMMOARPGCenterServerObject::RecvProtocol(uint32 InProtocol)
 
 			break;
 		}
+		case SP_PlayerQuitRequests:
+		{
+			int32 UserID = INDEX_NONE;
+			SIMPLE_PROTOCOLS_RECEIVE(SP_PlayerQuitRequests, UserID);
+
+			UE_LOG(LogMMOARPGCenterServer, Display, TEXT("[PlayerQuitRequests] Center Server Reviced: user ID=%i"), UserID);
+
+			if (UserID != INDEX_NONE)
+			{
+				if (RemoveRegisterInfo(UserID))
+				{
+					UE_LOG(LogMMOARPGCenterServer, Display, TEXT("[INFO][PlayerQuit] remove user successfully. User ID = %i"), UserID);
+				}
+				else
+				{
+					UE_LOG(LogMMOARPGCenterServer, Display, TEXT("[WARN][PlayerQuit] remove user not found. User ID = %i"), UserID);
+				}
+			}
+
+			break;
+		}
 	}
 }
 
@@ -72,4 +93,21 @@ void UMMOARPGCenterServerObject::AddRegisterInfo(const FMMOARPGPlayerRegisterInf
 			break;
 		}
 	}
+}
+
+bool UMMOARPGCenterServerObject::RemoveRegisterInfo(const int32 InUserID)
+{
+	if (InUserID == INDEX_NONE)
+		return false;
+
+	for (auto& RegisterInfo : PlayerRegisterInfos)
+	{
+		if (RegisterInfo.Value.UserData.ID == InUserID)
+		{
+			RegisterInfo.Value.Reset();
+			return true;
+		}
+	}
+
+	return false;
 }
