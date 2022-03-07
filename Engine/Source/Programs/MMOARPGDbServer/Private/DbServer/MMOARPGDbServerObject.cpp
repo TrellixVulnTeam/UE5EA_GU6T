@@ -400,7 +400,7 @@ void UMMOARPGDbServerObject::RecvProtocol(uint32 InProtocol)
 			int32 SlotPos = INDEX_NONE;
 			FSimpleAddrInfo GateAddrInfo;
 			FSimpleAddrInfo CenterAddrInfo;
-			SIMPLE_PROTOCOLS_RECEIVE(SP_CreateCharacterRequests, UserID, SlotPos, GateAddrInfo, CenterAddrInfo);
+			SIMPLE_PROTOCOLS_RECEIVE(SP_PlayerRegisterInfoRequests, UserID, SlotPos, GateAddrInfo, CenterAddrInfo);
 
 			UE_LOG(LogMMOARPGDbServer, Display, TEXT("[PlayerRegisterInfoRequests] DB Server Recived: user id=%i, slot pos=%i"),
 				UserID, SlotPos);

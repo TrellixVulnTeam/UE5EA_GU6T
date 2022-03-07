@@ -4,6 +4,9 @@
 
 #include "SimpleNetChannelType.h" // plugin:  SimpleNetChannel
 
+#include "MMOARPGCommType.generated.h"
+
+
 enum class ELoginType
 {
 	LOGIN_SUCCESS,
@@ -45,8 +48,11 @@ struct MMOARPGCOMM_API FMMOARPGGateStatus
 	FSimpleAddrInfo GateAddrInfo;
 };
 
+USTRUCT()
 struct MMOARPGCOMM_API FMMOARPGCharacterAppearance
 {
+	GENERATED_USTRUCT_BODY()
+
 	FMMOARPGCharacterAppearance()
 		: Lv(INDEX_NONE)
 		, SlotPos(INDEX_NONE)
@@ -57,13 +63,22 @@ struct MMOARPGCOMM_API FMMOARPGCharacterAppearance
 
 	void Reset();
 
+	/* Basis */
+	UPROPERTY()
 	FString Name;
+	UPROPERTY()
 	FString CreationDate;
+	UPROPERTY()
 	int32 Lv;
+	UPROPERTY()
 	int32 SlotPos;
 
+	/* KneadingFace */
+	UPROPERTY()
 	float LegSize;
+	UPROPERTY()
 	float WaistSize;
+	UPROPERTY()
 	float ArmSize;
 };
 

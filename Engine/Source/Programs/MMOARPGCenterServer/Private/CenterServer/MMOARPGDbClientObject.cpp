@@ -45,20 +45,13 @@ void UMMOARPGDbClientObject::RecvProtocol(uint32 InProtocol)
 			// Register player's Character Info into Online List
 			if (UserDataJson != TEXT("{}") && CAJson != TEXT("{}"))
 			{
-				if (UMMOARPGCenterServerObject* CenterServerObj = Cast<UMMOARPGCenterServerObject>(FSimpleNetManage::GetNetManageNetworkObject(CenterServer, CenterAddrInfo)))
-				{
-					FMMOARPGPlayerRegisterInfo PlayerRegisterInfo;
-					NetDataParser::JsonToCharacterAppearance(CAJson, PlayerRegisterInfo.CA);
-					NetDataParser::JsonToUserdata(UserDataJson, PlayerRegisterInfo.UserData);
+				FMMOARPGPlayerRegisterInfo PlayerRegisterInfo;
+				NetDataParser::JsonToCharacterAppearance(CAJson, PlayerRegisterInfo.CA);
+				NetDataParser::JsonToUserdata(UserDataJson, PlayerRegisterInfo.UserData);
 
-					CenterServerObj->AddRegisterInfo(PlayerRegisterInfo);
-					UE_LOG(LogMMOARPGCenterServer, Display, TEXT("[INFO][PlayerRegister] register user successfully. User ID = %i"),
-						PlayerRegisterInfo.UserData.ID);
-				}
-				else
-				{
-					UE_LOG(LogMMOARPGCenterServer, Display, TEXT("[ERROR][PlayerRegister] register user failed."));
-				}
+				UMMOARPGCenterServerObject::AddRegisterInfo(PlayerRegisterInfo);
+				UE_LOG(LogMMOARPGCenterServer, Display, TEXT("[INFO][PlayerRegister] register user successfully. User ID = %i"),
+					PlayerRegisterInfo.UserData.ID);
 			}
 		
 			// TODO: Get DS Server info where Character is exist

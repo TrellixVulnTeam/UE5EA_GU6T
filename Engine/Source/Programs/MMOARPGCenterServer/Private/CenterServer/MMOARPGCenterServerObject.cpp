@@ -4,18 +4,24 @@
 #include "ServerList.h"
 
 // Plugins
+#include "MMOARPGCommType.h" // Plugin: MMOARPGComm
 #include "Protocol/RoleHallProtocol.h" // Plugin: MMOARPGComm
 #include "Protocol/GameProtocol.h" // Plugin: MMOARPGComm
 #include "Protocol/ServerProtocol.h" // Plugin: MMOARPGComm
 
 
+TMap<int32, FMMOARPGPlayerRegisterInfo> UMMOARPGCenterServerObject::PlayerRegisterInfos;
+
 void UMMOARPGCenterServerObject::Init()
 {
 	Super::Init();
 
-	// pre-allocation
-	for (int32 i = 0; i < 2000; ++i)
-		PlayerRegisterInfos.Add(i, FMMOARPGPlayerRegisterInfo());
+	if (!PlayerRegisterInfos.Num())
+	{
+		// pre-allocation
+		for (int32 i = 0; i < 2000; ++i)
+			PlayerRegisterInfos.Add(i, FMMOARPGPlayerRegisterInfo());
+	}
 }
 
 void UMMOARPGCenterServerObject::Tick(float DeltaTime)
@@ -72,6 +78,31 @@ void UMMOARPGCenterServerObject::RecvProtocol(uint32 InProtocol)
 				else
 				{
 					UE_LOG(LogMMOARPGCenterServer, Display, TEXT("[WARN][PlayerQuit] remove user not found. User ID = %i"), UserID);
+				}
+			}
+
+			break;
+		}
+		case SP_GetLoggedCharacterCaRequests:
+		{
+			int32 UserID = INDEX_NONE;
+			SIMPLE_PROTOCOLS_RECEIVE(SP_GetLoggedCharacterCaRequests, UserID);
+
+			UE_LOG(LogMMOARPGCenterServer, Display, TEXT("[GetLoggedCharacterCaRequests] Center Server Reviced: user ID=%i"), UserID);
+
+			if (UserID != INDEX_NONE)
+			{
+				for (auto& RegisterInfo : PlayerRegisterInfos)
+				{
+					if (RegisterInfo.Value.UserData.ID == UserID)
+					{
+						FString CAJson;
+						NetDataParser::CharacterAppearanceToJson(RegisterInfo.Value.CA, CAJson);
+
+						SIMPLE_PROTOCOLS_SEND(SP_GetLoggedCharacterCaResponses, UserID, CAJson);
+
+						break;
+					}
 				}
 			}
 
