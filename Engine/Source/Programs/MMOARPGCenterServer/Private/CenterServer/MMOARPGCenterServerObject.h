@@ -21,8 +21,11 @@ public:
 	virtual void Close();
 	virtual void RecvProtocol(uint32 InProtocol);
 
+public:
 	static void AddRegisterInfo(const FMMOARPGPlayerRegisterInfo& InRegisterInfo);
 	static bool RemoveRegisterInfo(const int32 InUserID);
+
+	static void AddRegisterInfo_CharacterAttribute(int32 InUserID, int32 InCharacterID, const FMMOARPGCharacterGameplayData& InCGD);
 
 private:
 	static TMap<int32, FMMOARPGPlayerRegisterInfo> PlayerRegisterInfos;

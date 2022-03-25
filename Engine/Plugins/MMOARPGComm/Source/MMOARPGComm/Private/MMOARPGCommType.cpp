@@ -139,6 +139,65 @@ namespace NetDataParser
 		}
 	}
 
+	// tool func
+	void SerializeAttributeData(const FString& InIdentifier, const FMMOARPGSimpleAttributeData& InAD, TSharedPtr<TJsonWriter<TCHAR, TCondensedJsonPrintPolicy<TCHAR>>> InJsonWriter)
+	{
+		InJsonWriter->WriteObjectStart(InIdentifier);
+
+		InJsonWriter->WriteValue(TEXT("BaseValue"), InAD.BaseValue);
+		InJsonWriter->WriteValue(TEXT("CurrentValue"), InAD.CurrentValue);
+
+		InJsonWriter->WriteObjectEnd();
+	}
+
+	void DeserializeAttributeData(const FString& InFieldName, TSharedPtr<FJsonObject> InJsonObject, FMMOARPGSimpleAttributeData& OutAD)
+	{
+		if (TSharedPtr<FJsonObject> SubJsonObject = InJsonObject->GetObjectField(InFieldName))
+		{
+			OutAD.BaseValue = SubJsonObject->GetNumberField(TEXT("BaseValue"));
+			OutAD.CurrentValue = SubJsonObject->GetNumberField(TEXT("CurrentValue"));
+		}
+	}
+
+	MMOARPGCOMM_API void CharacterGameplayDataToJson(const FMMOARPGCharacterGameplayData& InCGD, FString& OutJson)
+	{
+		OutJson.Empty();
+		// Use Json Writer to create json string
+		TSharedPtr<TJsonWriter<TCHAR, TCondensedJsonPrintPolicy<TCHAR>>> JsonWriter =
+			TJsonWriterFactory<TCHAR, TCondensedJsonPrintPolicy<TCHAR>>::Create(&OutJson);
+
+		JsonWriter->WriteObjectStart();
+
+		SerializeAttributeData(TEXT("Health"), InCGD.Health, JsonWriter);
+		SerializeAttributeData(TEXT("MaxHealth"), InCGD.MaxHealth, JsonWriter);
+		SerializeAttributeData(TEXT("Mana"), InCGD.Mana, JsonWriter);
+		SerializeAttributeData(TEXT("MaxMana"), InCGD.MaxMana, JsonWriter);
+		//...
+
+		JsonWriter->WriteObjectEnd();
+		JsonWriter->Close();
+	}
+
+	MMOARPGCOMM_API bool JsonToCharacterGameplayData(const FString& InJson, FMMOARPGCharacterGameplayData& OutCGD)
+	{
+		// Read and Deserialize Json
+		TSharedRef<TJsonReader<>> JsonReader = TJsonReaderFactory<>::Create(InJson);
+		TSharedPtr<FJsonObject> ReadRoot;
+
+		if (FJsonSerializer::Deserialize(JsonReader, ReadRoot))
+		{
+			DeserializeAttributeData(TEXT("Health"), ReadRoot, OutCGD.Health);
+			DeserializeAttributeData(TEXT("MaxHealth"), ReadRoot, OutCGD.MaxHealth);
+			DeserializeAttributeData(TEXT("Mana"), ReadRoot, OutCGD.Mana);
+			DeserializeAttributeData(TEXT("MaxMana"), ReadRoot, OutCGD.MaxMana);
+			//...
+
+			return true;
+		}
+
+		return false;
+	}
+
 }
 
 void FMMOARPGCharacterAppearance::Reset()

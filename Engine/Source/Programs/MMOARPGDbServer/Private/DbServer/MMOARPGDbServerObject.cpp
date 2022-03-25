@@ -6,6 +6,7 @@
 #include "Protocol/LoginProtocol.h" // Plugin: MMOARPGComm
 #include "Protocol/RoleHallProtocol.h" // Plugin: MMOARPGComm
 #include "Protocol/ServerProtocol.h" // Plugin: MMOARPGComm
+#include "Protocol/GameProtocol.h" // Plugin: MMOARPGComm
 #include "MMOARPGCommType.h" // Plugin: MMOARPGComm
 
 #include "MySQLConfig.h"
@@ -423,7 +424,29 @@ void UMMOARPGDbServerObject::RecvProtocol(uint32 InProtocol)
 				}
 			}
 		}
+		case SP_GetCharacterGameplayDataRequests:
+		{
+			int32 UserID = INDEX_NONE;
+			int32 CharacterID = INDEX_NONE;
+			FSimpleAddrInfo CenterAddrInfo;
+			SIMPLE_PROTOCOLS_RECEIVE(SP_GetCharacterGameplayDataRequests, UserID, CharacterID, CenterAddrInfo);
 
+			UE_LOG(LogMMOARPGDbServer, Display, TEXT("[GetCharacterGameplayDataRequests] DB Server Recived: user id=%i, character id=%i"),
+				UserID, CharacterID);
+
+			if (UserID != INDEX_NONE && CharacterID != INDEX_NONE)
+			{
+				FMMOARPGCharacterGameplayData CharacterGameplayData;
+
+				// ...
+
+				FString CharacterGameplayDataJson;
+				NetDataParser::CharacterGameplayDataToJson(CharacterGameplayData, CharacterGameplayDataJson);
+				SIMPLE_PROTOCOLS_SEND(SP_GetCharacterGameplayDataResponses, UserID, CharacterID, CharacterGameplayDataJson, CenterAddrInfo);
+			}
+
+			break;
+		}
 	}
 }
 

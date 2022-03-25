@@ -108,6 +108,53 @@ void UMMOARPGCenterServerObject::RecvProtocol(uint32 InProtocol)
 
 			break;
 		}
+		case SP_GetCharacterGameplayDataRequests:
+		{
+			int32 UserID = INDEX_NONE;
+			int32 CharacterID = INDEX_NONE;
+			SIMPLE_PROTOCOLS_RECEIVE(SP_GetCharacterGameplayDataRequests, UserID, CharacterID);
+
+			UE_LOG(LogMMOARPGCenterServer, Display, TEXT("[GetCharacterGameplayDataRequests] Center Server Reviced: user ID=%i, character ID=%i"),
+				UserID, CharacterID);
+
+			if (UserID != INDEX_NONE && CharacterID != INDEX_NONE)
+			{
+				FString CharacterGameplayDataJson;
+				// TODO
+				if (FMMOARPGPlayerRegisterInfo* PlayerRegisterInfo = PlayerRegisterInfos.Find(UserID)) 
+				{
+					if (FMMOARPGCharacterGameplayData* CharacterGameplayData = PlayerRegisterInfo->CharacterAttributes.Find(CharacterID)) // data is in Center Server cache
+					{
+						NetDataParser::CharacterGameplayDataToJson(*CharacterGameplayData, CharacterGameplayDataJson);
+
+						UE_LOG(LogMMOARPGCenterServer, Display, TEXT("[GetCharacterGameplayDataRequests] Get User(%i) Character(%i) successfully."),
+							UserID, CharacterID);
+
+						SIMPLE_PROTOCOLS_SEND(SP_GetCharacterGameplayDataResponses, UserID, CharacterGameplayDataJson);
+					}
+					else // data isn't in Center Server cache
+					{
+						// Get current Center Server address
+						FSimpleAddrInfo CenterAddrInfo;
+						GetRemoteAddrInfo(CenterAddrInfo);
+
+						UE_LOG(LogMMOARPGCenterServer, Display, TEXT("[GetCharacterGameplayDataRequests] User(%i) Character(%i) cache isn't in server, sending request to DB."), UserID, CharacterID);
+
+						// transfer request to DB Server
+						SIMPLE_CLIENT_SEND(DbClient, SP_GetCharacterGameplayDataRequests, UserID, CharacterID, CenterAddrInfo);
+					}
+				}
+				else // user isn't register to Center Server
+				{
+					UE_LOG(LogMMOARPGCenterServer, Display, TEXT("[GetCharacterGameplayDataRequests] User(%i) isn't exist in server"),
+						UserID);
+
+					SIMPLE_PROTOCOLS_SEND(SP_GetCharacterGameplayDataResponses, UserID, CharacterGameplayDataJson); // response empty json
+				}
+			}
+
+			break;
+		}
 	}
 }
 
@@ -141,4 +188,21 @@ bool UMMOARPGCenterServerObject::RemoveRegisterInfo(const int32 InUserID)
 	}
 
 	return false;
+}
+
+void UMMOARPGCenterServerObject::AddRegisterInfo_CharacterAttribute(int32 InUserID, int32 InCharacterID, const FMMOARPGCharacterGameplayData& InCGD)
+{
+	if (FMMOARPGPlayerRegisterInfo* PlayerRegisterInfo = PlayerRegisterInfos.Find(InUserID))
+	{
+		if (!PlayerRegisterInfo->CharacterAttributes.Contains(InCharacterID))
+		{
+			PlayerRegisterInfo->CharacterAttributes.Add(InCharacterID, InCGD);
+
+			UE_LOG(LogMMOARPGCenterServer, Display, TEXT("[INFO] Add CharacterGameplayData succesfully. user_id=%i, character_i=%i"), InUserID, InCharacterID);
+		}
+		else
+		{
+			UE_LOG(LogMMOARPGCenterServer, Display, TEXT("[WARN] Adding already existed CharacterGameplayData! user_id=%i, character_i=%i"), InUserID, InCharacterID);
+		}
+	}
 }

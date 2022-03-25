@@ -8,6 +8,7 @@
 #include "SimpleProtocolsDefinition.h"
 #include "Protocol/ServerProtocol.h" // Plugin: MMOARPGComm
 #include "Protocol/RoleHallProtocol.h" // Plugin: MMOARPGComm
+#include "Protocol/GameProtocol.h" // Plugin: MMOARPGComm
 #include "MMOARPGCommType.h" // Plugin: MMOARPGComm
 
 void UMMOARPGDbClientObject::Init()
@@ -59,6 +60,36 @@ void UMMOARPGDbClientObject::RecvProtocol(uint32 InProtocol)
 
 			// Send Response by Center Server
 			SIMPLE_SERVER_SEND(CenterServer, SP_LoginToDSServerResponses, CenterAddrInfo, GateAddrInfo, DSServerAddrInfo);
+
+			break;
+		}
+		case SP_GetCharacterGameplayDataResponses:
+		{
+			int32 UserID = INDEX_NONE;
+			int32 CharacterID = INDEX_NONE;
+			FString CharacterGameplayDataJson;
+			FSimpleAddrInfo CenterAddrInfo;
+			SIMPLE_PROTOCOLS_RECEIVE(SP_GetCharacterGameplayDataRequests, UserID, CharacterID, CharacterGameplayDataJson, CenterAddrInfo);
+
+			UE_LOG(LogMMOARPGCenterServer, Display, TEXT("[GetCharacterGameplayDataResponses] DB Client Reviced: user_id=%i, character_id=%i"),
+				UserID, CharacterID);
+
+			if (UserID != INDEX_NONE && CharacterID != INDEX_NONE)
+			{
+				FMMOARPGCharacterGameplayData CharacterGameplayData;
+				if (NetDataParser::JsonToCharacterGameplayData(CharacterGameplayDataJson, CharacterGameplayData))
+				{
+					UMMOARPGCenterServerObject::AddRegisterInfo_CharacterAttribute(UserID, CharacterID, CharacterGameplayData);
+
+					UE_LOG(LogMMOARPGCenterServer, Display, TEXT("[INFO][GetCharacterGameplayDataResponses] Character Gameplay Data parsing successfully."));
+
+					SIMPLE_SERVER_SEND(CenterServer, SP_GetCharacterGameplayDataResponses, CenterAddrInfo, UserID, CharacterGameplayDataJson);
+				}
+				else
+				{
+					UE_LOG(LogMMOARPGCenterServer, Display, TEXT("[ERROR][GetCharacterGameplayDataResponses] Character Gameplay Data parsing error!"));
+				}
+			}
 
 			break;
 		}

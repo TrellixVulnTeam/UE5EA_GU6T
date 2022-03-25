@@ -91,6 +91,41 @@ struct MMOARPGCOMM_API FMMOARPGPlayerRegisterInfo
 
 	FMMOARPGUserData UserData;
 	FMMOARPGCharacterAppearance CA;
+	TMap<int32, FMMOARPGCharacterGameplayData> CharacterAttributes;
+};
+
+USTRUCT()
+struct FMMOARPGSimpleAttributeData
+{
+	GENERATED_USTRUCT_BODY()
+
+	FMMOARPGSimpleAttributeData()
+		: BaseValue(0.f), CurrentValue(0.f)
+	{}
+
+	UPROPERTY()
+	float BaseValue;
+
+	UPROPERTY()
+	float CurrentValue;
+};
+
+USTRUCT()
+struct MMOARPGCOMM_API FMMOARPGCharacterGameplayData
+{
+	GENERATED_USTRUCT_BODY()
+
+	UPROPERTY()
+	FMMOARPGSimpleAttributeData Health;
+
+	UPROPERTY()
+	FMMOARPGSimpleAttributeData MaxHealth;
+
+	UPROPERTY()
+	FMMOARPGSimpleAttributeData Mana;
+
+	UPROPERTY()
+	FMMOARPGSimpleAttributeData MaxMana;
 };
 
 // String(Json) <-> FMMOARPGUserData
@@ -104,4 +139,7 @@ namespace NetDataParser
 
 	MMOARPGCOMM_API void CharacterAppearanceToJson(const FMMOARPGCharacterAppearance& InCA, FString& OutJson);
 	MMOARPGCOMM_API void JsonToCharacterAppearance(const FString& InJson, FMMOARPGCharacterAppearance& OutCA);
+
+	MMOARPGCOMM_API void CharacterGameplayDataToJson(const FMMOARPGCharacterGameplayData& InCGD, FString& OutJson);
+	MMOARPGCOMM_API bool JsonToCharacterGameplayData(const FString& InJson, FMMOARPGCharacterGameplayData& OutCGD);
 }
