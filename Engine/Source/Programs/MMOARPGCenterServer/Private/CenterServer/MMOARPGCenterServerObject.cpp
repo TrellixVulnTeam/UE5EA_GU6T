@@ -127,7 +127,7 @@ void UMMOARPGCenterServerObject::RecvProtocol(uint32 InProtocol)
 					{
 						NetDataParser::CharacterGameplayDataToJson(*CharacterGameplayData, CharacterGameplayDataJson);
 
-						UE_LOG(LogMMOARPGCenterServer, Display, TEXT("[GetCharacterGameplayDataRequests] Get User(%i) Character(%i) successfully."),
+						UE_LOG(LogMMOARPGCenterServer, Display, TEXT("[INFO][GetCharacterGameplayDataRequests] Get User(%i) Character(%i) successfully."),
 							UserID, CharacterID);
 
 						SIMPLE_PROTOCOLS_SEND(SP_GetCharacterGameplayDataResponses, UserID, CharacterGameplayDataJson);
@@ -138,7 +138,7 @@ void UMMOARPGCenterServerObject::RecvProtocol(uint32 InProtocol)
 						FSimpleAddrInfo CenterAddrInfo;
 						GetRemoteAddrInfo(CenterAddrInfo);
 
-						UE_LOG(LogMMOARPGCenterServer, Display, TEXT("[GetCharacterGameplayDataRequests] User(%i) Character(%i) cache isn't in server, sending request to DB."), UserID, CharacterID);
+						UE_LOG(LogMMOARPGCenterServer, Display, TEXT("[INFO][GetCharacterGameplayDataRequests] User(%i) Character(%i) cache isn't in server, sending request to DB."), UserID, CharacterID);
 
 						// transfer request to DB Server
 						SIMPLE_CLIENT_SEND(DbClient, SP_GetCharacterGameplayDataRequests, UserID, CharacterID, CenterAddrInfo);
@@ -146,7 +146,7 @@ void UMMOARPGCenterServerObject::RecvProtocol(uint32 InProtocol)
 				}
 				else // user isn't register to Center Server
 				{
-					UE_LOG(LogMMOARPGCenterServer, Display, TEXT("[GetCharacterGameplayDataRequests] User(%i) isn't exist in server"),
+					UE_LOG(LogMMOARPGCenterServer, Display, TEXT("[ERROR][GetCharacterGameplayDataRequests] User(%i) isn't exist in server"),
 						UserID);
 
 					SIMPLE_PROTOCOLS_SEND(SP_GetCharacterGameplayDataResponses, UserID, CharacterGameplayDataJson); // response empty json

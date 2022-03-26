@@ -84,16 +84,6 @@ struct MMOARPGCOMM_API FMMOARPGCharacterAppearance
 
 typedef TArray<FMMOARPGCharacterAppearance> FMMOARPGCharacterAppearances;
 
-struct MMOARPGCOMM_API FMMOARPGPlayerRegisterInfo
-{
-	void Reset();
-	bool IsValid() const;
-
-	FMMOARPGUserData UserData;
-	FMMOARPGCharacterAppearance CA;
-	TMap<int32, FMMOARPGCharacterGameplayData> CharacterAttributes;
-};
-
 USTRUCT()
 struct FMMOARPGSimpleAttributeData
 {
@@ -126,6 +116,16 @@ struct MMOARPGCOMM_API FMMOARPGCharacterGameplayData
 
 	UPROPERTY()
 	FMMOARPGSimpleAttributeData MaxMana;
+};
+
+struct MMOARPGCOMM_API FMMOARPGPlayerRegisterInfo
+{
+	void Reset();
+	bool IsValid() const;
+
+	FMMOARPGUserData UserData;
+	FMMOARPGCharacterAppearance CA;
+	TMap<int32, FMMOARPGCharacterGameplayData> CharacterAttributes;
 };
 
 // String(Json) <-> FMMOARPGUserData
